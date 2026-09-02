@@ -3,8 +3,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>MDM · Área de alumnos</title>
-<div id="uuidMachine">f1d1edf8-3e4d-4ff3-a555-01106818432c</div><link rel="preconnect" href="https://fonts.googleapis.com">
+<title>MDM · Área de alumnos</title><link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400;500;600;700&amp;family=Jost:wght@300;400;500&amp;display=swap" rel="stylesheet">
 
@@ -206,7 +205,7 @@ const CURSO = {
   ]
 };
 /*DATOS_FIN*/
-</script><div id="uuidMachine">2082f56c-abcc-43d1-8309-16560da9fcdd</div><div id="uuidMachine">22bc9c46-df94-4eb8-abef-565ecab5a1e2</div><div id="uuidMachine">202a7411-0874-4f93-af05-3727c1eba2e9</div>
+</script>
 <!-- ══════════════════════════════════════════════════════════════════
      A PARTIR DE AQUÍ NO HACE FALTA TOCAR NADA
      ══════════════════════════════════════════════════════════════════ -->
@@ -329,7 +328,6 @@ button{ font:inherit; color:inherit; background:none; border:none; cursor:pointe
   0%, 6%    { opacity:0 }
   20%       { opacity:1 }
   44%, 100% { opacity:0 }
-}
 }
 
 @keyframes aureolar{
@@ -831,7 +829,18 @@ button{ font:inherit; color:inherit; background:none; border:none; cursor:pointe
 
   /* Copia del archivo tal cual se cargó, antes de que pintemos nada.
      Sirve para poder regenerarlo al descargar. */
-  const PLANTILLA = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+  /* Algunas extensiones del navegador inyectan nodos en la página.
+     Sin este filtro quedan grabados en el archivo al publicar. */
+  function limpiarInyecciones(html){
+    return html
+      .replace(/<div[^>]*id=["']uuidMachine["'][^>]*>[\s\S]*?<\/div>/gi, '')
+      .replace(/<head>[\s\S]*?<\/head>/i, function(head){
+        return head.replace(/<(div|span|iframe|img)\b[\s\S]*?<\/\1>/gi, '');
+      });
+  }
+
+  const PLANTILLA = limpiarInyecciones(
+    '<!DOCTYPE html>\n' + document.documentElement.outerHTML);
 
   const nav   = document.getElementById('navegacion');
   const zona  = document.getElementById('contenido');
