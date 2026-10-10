@@ -1,0 +1,38 @@
+MDM MÓVIL · cómo subirlo a mdmtrading.net (Railway)
+====================================================
+
+1) Copia la carpeta "mobile" en la raíz de tu repo MDMtrading-web
+   (al lado de tu server.js / index.js).
+
+2) Instala las dos dependencias nuevas (en el repo):
+      npm install ws web-push
+   (express ya lo tienes)
+
+3) En tu archivo del servidor, donde haces app.listen, guarda el servidor
+   y engancha el módulo. Por ejemplo:
+
+      const server = app.listen(PORT, () => console.log('ok'));
+      require('./mobile')(app, server);
+
+   Si ya tenías "const server = app.listen(...)", solo añade la segunda línea.
+
+4) Avisos push (una sola vez): en tu PC, dentro del repo, ejecuta
+      node mobile/vapid.js
+   Copia las 3 líneas que salen en Railway → tu servicio → Variables
+   (VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT).
+   No las cambies después: si cambian, los móviles tienen que volver a
+   activar los avisos.
+
+5) git commit + push. Railway lo despliega solo.
+
+Comprobar:
+   https://mdmtrading.net/m/            → pantalla "Vincula tu móvil"
+   https://mdmtrading.net/m/api/calendar → JSON con las noticias USD
+
+Qué añade al servidor:
+   /m/               web app del móvil (se instala con "Añadir a pantalla de inicio")
+   /m/ws             puente WebSocket entre NinjaTrader (Core) y el móvil
+   /m/api/calendar   calendario USD (ForexFactory, en caché 15 min)
+   /m/api/vapid      clave pública de los avisos
+No usa base de datos ni guarda nada: si el servidor se reinicia, PC y móvil
+se vuelven a conectar solos.
