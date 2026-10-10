@@ -18,6 +18,7 @@
     x: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9 9l6 6M15 9l-6 6"/></svg>',
     stop: '<svg viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="3"/></svg>',
     power: '<svg viewBox="0 0 24 24"><path d="M12 3v9"/><path d="M6.3 7.3a8 8 0 1 0 11.4 0"/></svg>',
+    qr: '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><path d="M8 12h8"/></svg>',
     bell: '<svg viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.9 1.9 0 0 0 3.4 0"/></svg>'
   };
 
@@ -156,7 +157,8 @@
     $('#tabs').hidden = false;
     if (st.view === 'cal') { v.innerHTML = calView(); return; }
     if (st.view === 'settings') { v.innerHTML = settingsView(); bindSettings(); return; }
-    if (st.err) { v.innerHTML = '<div class="card empty"><b>No se puede conectar</b>' + esc(st.err) + '</div>'; return; }
+    if (st.err) { v.innerHTML = '<div class="card empty"><b>No se puede conectar</b>' + esc(st.err) +
+      '<button class="btn gold wide" data-scan style="margin-top:16px">Escanear QR otra vez</button></div>'; return; }
     if (!st.sock) { v.innerHTML = '<div class="card empty"><b>Conectando…</b>Comprobando la conexión con tu PC.</div>'; return; }
     if (!st.core || !st.live) { v.innerHTML = '<div class="card empty"><b>Sin conexión con NinjaTrader</b>Abre NinjaTrader en tu PC y la conexión se restablecerá sola.</div>'; return; }
     v.innerHTML = st.view === 'copy' ? copyView() : accountsView();
@@ -165,9 +167,85 @@
   function pairView() {
     return '<div class="pair"><img src="img/icon-512.png" alt=""><h1>Vincula tu móvil</h1>' +
       '<p class="mut">Controla tus cuentas de NinjaTrader desde aquí.</p>' +
+      '<button class="btn gold wide" data-scan style="max-width:360px;margin:18px auto 0;display:flex;align-items:center;justify-content:center;gap:10px">' + ICON.qr + 'Escanear QR</button>' +
       '<div class="steps"><div>En tu PC, abre el <b>Centro de mando</b> y entra en <b>Móvil</b>.</div>' +
-      '<div>Pulsa <b>Vincular móvil</b>: aparecerá un código QR.</div>' +
-      '<div>Escanéalo con la cámara de este móvil y ábrelo. Listo.</div></div></div>';
+      '<div>Pulsa <b>Vincular móvil</b> y después <b>Mostrar QR</b>.</div>' +
+      '<div>Aquí, pulsa <b>Escanear QR</b> y apunta la cámara al código. Listo.</div></div></div>';
+  }
+
+  /* ── lector de QR ────────────────────────────────────────────── */
+  // Chrome en Android trae lector de códigos (BarcodeDetector). Donde no lo hay (iPhone),
+  // se carga jsQR solo en ese momento.
+  let scanStream = null, scanTimer = null;
+  function loadJsQR() {
+    if (window.jsQR) return Promise.resolve();
+    return new Promise((ok, ko) => { const sc = document.createElement('script'); sc.src = 'vendor/jsQR.js'; sc.onload = ok; sc.onerror = ko; document.head.appendChild(sc); });
+  }
+  function parsePairText(t) {
+    try {
+      const u = new URL(String(t).trim());
+      const h = new URLSearchParams(u.hash.slice(1));
+      const c = h.get('c'), k = h.get('k');
+      if (c && k && /^[A-Za-z0-9_-]{16,64}$/.test(c) && k.length >= 24) return { ch: c, key: k, pc: h.get('pc') || '', at: Date.now() };
+    } catch (e) {}
+    return null;
+  }
+  function stopScan() {
+    clearTimeout(scanTimer); scanTimer = null;
+    if (scanStream) { scanStream.getTracks().forEach(t => t.stop()); scanStream = null; }
+    const o = document.getElementById('scanBox'); if (o) o.remove();
+  }
+  async function startScan() {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { toast('Este navegador no deja usar la cámara. Escanea el QR con la app de cámara del móvil.', 'err'); return; }
+    const o = document.createElement('div'); o.id = 'scanBox'; o.className = 'scan';
+    o.innerHTML = '<video playsinline muted autoplay></video><div class="scan-frame"></div><div class="scan-txt">Apunta al QR que sale en el PC</div><button class="btn" data-x="close">Cancelar</button>';
+    document.body.appendChild(o);
+    o.querySelector('[data-x=close]').onclick = stopScan;
+    const video = o.querySelector('video');
+    try {
+      scanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+    } catch (e) {
+      stopScan();
+      toast(e && e.name === 'NotAllowedError' ? 'Has denegado la cámara. Permítela en los ajustes del navegador para escanear.' : 'No se ha podido abrir la cámara.', 'err');
+      return;
+    }
+    video.srcObject = scanStream;
+    try { await video.play(); } catch (e) {}
+    let detector = null;
+    if ('BarcodeDetector' in window) { try { detector = new window.BarcodeDetector({ formats: ['qr_code'] }); } catch (e) { detector = null; } }
+    if (!detector) { try { await loadJsQR(); } catch (e) { stopScan(); toast('No se ha podido cargar el lector de QR.', 'err'); return; } }
+    const cv = document.createElement('canvas'), cx = cv.getContext('2d', { willReadFrequently: true });
+    const found = txt => {
+      const p = parsePairText(txt);
+      if (!p) { o.querySelector('.scan-txt').textContent = 'Ese QR no es el del Centro de mando'; return false; }
+      stopScan();
+      if (navigator.vibrate) navigator.vibrate(80);
+      savePair(p); pair = p; st.err = ''; st.retry = 0;
+      try { if (st.ws) st.ws.close(); } catch (e) {}
+      header(); render(); connect();
+      toast('Móvil vinculado' + (p.pc ? ' con ' + p.pc : ''), 'ok');
+      return true;
+    };
+    const tick = async () => {
+      if (!scanStream) return;
+      try {
+        if (video.readyState >= 2) {
+          if (detector) {
+            const r = await detector.detect(video);
+            if (r && r.length && found(r[0].rawValue)) return;
+          } else {
+            const w = video.videoWidth, h = video.videoHeight, sc = Math.min(1, 720 / Math.max(w, h));
+            cv.width = Math.round(w * sc); cv.height = Math.round(h * sc);
+            cx.drawImage(video, 0, 0, cv.width, cv.height);
+            const img = cx.getImageData(0, 0, cv.width, cv.height);
+            const r = window.jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+            if (r && r.data && found(r.data)) return;
+          }
+        }
+      } catch (e) {}
+      scanTimer = setTimeout(tick, 180);
+    };
+    tick();
   }
 
   function rows() {
@@ -412,6 +490,7 @@
 
   /* ── eventos ─────────────────────────────────────────────────── */
   $('#tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; st.view = b.dataset.v; if (st.view === 'cal') loadCal(); render(); window.scrollTo(0, 0); });
+  document.addEventListener('click', e => { if (e.target.closest('[data-scan]')) startScan(); });
   $('#view').addEventListener('click', e => {
     const a = e.target.closest('[data-acts]'); if (a) return actionsSheet(a.getAttribute('data-acts'));
     if (e.target.closest('#cpPower')) {

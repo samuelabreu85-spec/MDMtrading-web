@@ -145,3 +145,11 @@ h2{font:900 15px/1.2 'Cinzel',serif;letter-spacing:1.6px;color:var(--gold2);text
 .toast{pointer-events:auto;padding:12px 14px;border-radius:13px;background:#1f1a10;border:1px solid var(--line2);box-shadow:0 10px 30px rgba(0,0,0,.5);font-size:14px;animation:up .2s}
 .toast.err{border-color:rgba(248,113,113,.5);color:#fecaca} .toast.ok{border-color:rgba(52,211,153,.45)}
 .toast b{display:block;margin-bottom:2px}
+
+/* lector de QR */
+.scan{position:fixed;inset:0;z-index:80;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.scan video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.scan-frame{position:relative;width:min(70vw,300px);aspect-ratio:1;border-radius:22px;box-shadow:0 0 0 9999px rgba(0,0,0,.55);border:3px solid var(--gold);animation:pulse 1.6s ease-in-out infinite}
+.scan-txt{position:relative;margin-top:22px;color:#fff;font-weight:700;text-shadow:0 1px 6px #000;text-align:center;padding:0 20px}
+.scan .btn{position:absolute;bottom:calc(30px + var(--safe-b));left:50%;transform:translateX(-50%);min-width:160px}
+@keyframes pulse{50%{border-color:var(--gold2);box-shadow:0 0 0 9999px rgba(0,0,0,.55),0 0 30px rgba(212,175,55,.5)}}
