@@ -153,3 +153,11 @@ h2{font:900 15px/1.2 'Cinzel',serif;letter-spacing:1.6px;color:var(--gold2);text
 .scan-txt{position:relative;margin-top:22px;color:#fff;font-weight:700;text-shadow:0 1px 6px #000;text-align:center;padding:0 20px}
 .scan .btn{position:absolute;bottom:calc(30px + var(--safe-b));left:50%;transform:translateX(-50%);min-width:160px}
 @keyframes pulse{50%{border-color:var(--gold2);box-shadow:0 0 0 9999px rgba(0,0,0,.55),0 0 30px rgba(212,175,55,.5)}}
+
+/* instalar */
+.inst{display:flex;align-items:center;gap:12px;padding:12px 14px;border-color:rgba(212,175,55,.35);position:relative}
+.inst img{width:42px;height:42px;border-radius:50%;flex:none;box-shadow:0 0 0 1px var(--gold3)}
+.inst div{flex:1;min-width:0} .inst div>b{display:block;font-size:14px} .inst small b{color:var(--t1)} .inst small{display:block;color:var(--t2);font-size:12.5px;margin-top:2px;line-height:1.45}
+.inst .btn{padding:9px 16px;flex:none}
+.inst-x{appearance:none;border:0;background:none;color:var(--t3);font-size:22px;line-height:1;padding:0 2px;align-self:flex-start}
+.pair .inst{text-align:left;max-width:420px;margin:0 auto 18px}

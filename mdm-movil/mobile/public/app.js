@@ -150,7 +150,41 @@
   let rq = false;
   function scheduleRender() { if (rq) return; rq = true; requestAnimationFrame(() => { rq = false; render(); }); }
 
+  /* ── instalar la app ─────────────────────────────────────────
+     Android (Chrome): botón que abre la ventana de instalación del sistema.
+     iPhone: Apple no deja instalar desde la web; se explica Compartir → Añadir.
+     Instalada (abierta desde el icono): no sale nada. */
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  let installEvt = null;
+  window.addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; render(); });
+  window.addEventListener('appinstalled', () => { installEvt = null; render(); toast('App instalada. Ábrela desde su icono.', 'ok'); });
+  const INST_LS = 'mdm.m.instHide';
+  function instHidden() { try { return Date.now() < Number(localStorage.getItem(INST_LS) || 0); } catch (e) { return false; } }
+  function installBanner() {
+    if (standalone() || instHidden()) return '';
+    const shareIco = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-3px"><path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg>';
+    if (isIOS) return '<div class="card inst"><img src="img/icon-192.png" alt=""><div><b>Instala la app en tu iPhone</b>' +
+      '<small>Pulsa ' + shareIco + ' <b>Compartir</b> y después <b>Añadir a pantalla de inicio</b>. Así tendrás el icono y los avisos.</small></div>' +
+      '<button class="inst-x" data-inst-x aria-label="Cerrar">×</button></div>';
+    if (installEvt) return '<div class="card inst"><img src="img/icon-192.png" alt=""><div><b>Instala la app</b><small>Icono en tu pantalla de inicio, a pantalla completa y con avisos.</small></div>' +
+      '<button class="btn gold" data-install>Instalar</button></div>';
+    return '';
+  }
+  document.addEventListener('click', async e => {
+    if (e.target.closest('[data-install]') && installEvt) {
+      const ev = installEvt; installEvt = null;
+      try { ev.prompt(); const r = await ev.userChoice; if (r && r.outcome !== 'accepted') installEvt = null; } catch (x) {}
+      render();
+    }
+    if (e.target.closest('[data-inst-x]')) { try { localStorage.setItem(INST_LS, String(Date.now() + 3 * 864e5)); } catch (x) {} render(); }
+  });
+
   function render() {
+    renderInner();
+    if (!pair || st.view === 'accounts') { const b = installBanner(); if (b) $('#view').insertAdjacentHTML('afterbegin', b); }
+  }
+
+  function renderInner() {
     const v = $('#view');
     document.querySelectorAll('#tabs button').forEach(b => b.classList.toggle('on', b.dataset.v === st.view));
     if (!pair) { $('#tabs').hidden = true; v.innerHTML = pairView(); return; }
@@ -429,8 +463,7 @@
   }
 
   /* ── ajustes y avisos ────────────────────────────────────────── */
-  const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
-  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  function standalone() { return matchMedia('(display-mode: standalone)').matches || navigator.standalone === true; }
   async function pushState() {
     if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) return 'no';
     const reg = await navigator.serviceWorker.ready;
