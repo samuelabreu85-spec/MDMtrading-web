@@ -68,7 +68,7 @@
   function onMsg(m) {
     if (m.t === 'status') { st.core = !!m.core; if (m.push != null) st.push = !!m.push; if (!st.core) st.live = null; header(); render(); return; }
     if (m.t === 'accounts') { st.core = true; st.live = m; header(); scheduleRender(); return; }
-    if (m.t === 'ack') { const p = st.pending.get(String(m.id)); if (p) { st.pending.delete(String(m.id)); p.resolve({ ok: !!m.ok, msg: m.msg }); } return; }
+    if (m.t === 'ack') { const p = st.pending.get(String(m.id)); if (p) { st.pending.delete(String(m.id)); p.resolve({ ok: !!m.ok, msg: m.msg, data: m.data }); } return; }
     if (m.t === 'event') { eventToast(m); return; }
     if (m.t === 'error') { st.err = m.msg || 'Error'; render(); return; }
   }
@@ -195,6 +195,7 @@
       '<button class="btn gold wide" data-scan style="margin-top:16px">Escanear QR otra vez</button></div>'; return; }
     if (!st.sock) { v.innerHTML = '<div class="card empty"><b>Conectando…</b>Comprobando la conexión con tu PC.</div>'; return; }
     if (!st.core || !st.live) { v.innerHTML = '<div class="card empty"><b>Sin conexión con NinjaTrader</b>Abre NinjaTrader en tu PC y la conexión se restablecerá sola.</div>'; return; }
+    if (st.view === 'pnl') { v.innerHTML = pnlView(); return; }
     v.innerHTML = st.view === 'copy' ? copyView() : accountsView();
   }
 
@@ -202,7 +203,7 @@
     return '<div class="pair"><img src="img/icon-512.png" alt=""><h1>Vincula tu móvil</h1>' +
       '<p class="mut">Controla tus cuentas de NinjaTrader desde aquí.</p>' +
       '<button class="btn gold wide" data-scan style="max-width:360px;margin:18px auto 0;display:flex;align-items:center;justify-content:center;gap:10px">' + ICON.qr + 'Escanear QR</button>' +
-      '<div class="steps"><div>En tu PC, abre el <b>Centro de mando</b> y entra en <b>Móvil</b>.</div>' +
+      '<div class="steps"><div>En tu PC, abre el <b>Centro de Control de Cuentas</b> y entra en <b>Móvil</b>.</div>' +
       '<div>Pulsa <b>Vincular móvil</b> y después <b>Mostrar QR</b>.</div>' +
       '<div>Aquí, pulsa <b>Escanear QR</b> y apunta la cámara al código. Listo.</div></div></div>';
   }
@@ -251,7 +252,7 @@
     const cv = document.createElement('canvas'), cx = cv.getContext('2d', { willReadFrequently: true });
     const found = txt => {
       const p = parsePairText(txt);
-      if (!p) { o.querySelector('.scan-txt').textContent = 'Ese QR no es el del Centro de mando'; return false; }
+      if (!p) { o.querySelector('.scan-txt').textContent = 'Ese QR no es el del Centro de Control de Cuentas'; return false; }
       stopScan();
       if (navigator.vibrate) navigator.vibrate(80);
       savePair(p); pair = p; st.err = ''; st.retry = 0;
@@ -524,7 +525,83 @@
   /* ── eventos ─────────────────────────────────────────────────── */
   $('#tabs').addEventListener('click', e => { const b = e.target.closest('button'); if (!b) return; st.view = b.dataset.v; if (st.view === 'cal') loadCal(); render(); window.scrollTo(0, 0); });
   document.addEventListener('click', e => { if (e.target.closest('[data-scan]')) startScan(); });
+  /* ── calendario P&L ──────────────────────────────────────────
+     Lo calcula el Core de NinjaTrader con tus operaciones (mismo criterio que el PC:
+     día de sesión, desde las 18:00 de Nueva York cuenta el día siguiente). */
+  const MESES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+  const PNL_LS = 'mdm.m.pnlsel';
+  const pnl = { y: new Date().getFullYear(), m: new Date().getMonth(), sel: 'all', data: null, key: '', busy: false, err: '', at: 0 };
+  try { pnl.sel = localStorage.getItem(PNL_LS) || 'all'; } catch (e) {}
+  const pk = () => pnl.y + '-' + pnl.m + '-' + pnl.sel;
+  async function loadPnl(force) {
+    if (pnl.busy || !st.core) return;
+    if (!force && pnl.data && pnl.key === pk() && Date.now() - pnl.at < 60000) return;
+    pnl.busy = true; const key = pk();
+    if (pnl.key !== key) pnl.data = null;
+    const r = await cmd('pnlMonth', { year: pnl.y, month: pnl.m + 1, sel: pnl.sel });
+    pnl.busy = false;
+    if (key !== pk()) return loadPnl(true);          // cambió mientras cargaba
+    if (r.ok && r.data) { pnl.data = r.data; pnl.key = key; pnl.at = Date.now(); pnl.err = ''; }
+    else pnl.err = /solo se puede hacer desde el PC/i.test(r.msg || '') ? 'Para ver el calendario en el móvil, actualiza MDMgestorCuentas en NinjaTrader.' : (r.msg || 'No se pudo cargar.');
+    if (st.view === 'pnl') render();
+  }
+  const mshort = v => { const n = Number(v) || 0, a = Math.abs(n); const t = a >= 1000 ? (a / 1000).toLocaleString('es-ES', { maximumFractionDigits: a >= 10000 ? 0 : 1 }) + 'k' : Math.round(a).toLocaleString('es-ES'); return (n > 0.004 ? '+' : n < -0.004 ? '−' : '') + t; };
+  function pnlView() {
+    if (!pnl.data || pnl.key !== pk()) { loadPnl(); }
+    const nav = '<div class="pn-nav"><button class="btn" data-pm="-1">‹</button><b>' + MESES[pnl.m] + ' ' + pnl.y + '</b><button class="btn" data-pm="1">›</button></div>';
+    const d = pnl.data && pnl.key === pk() ? pnl.data : null;
+    const accs = d ? d.accounts : (pnl.lastAccs || []);
+    if (d) pnl.lastAccs = d.accounts;
+    const hasG = accs.some(a => a.group);
+    let chips = '<div class="pn-chips">' + [['all', 'Todas']].concat(hasG ? [['eval', 'Evaluaciones'], ['fond', 'Fondeadas']] : [])
+      .concat(accs.map(a => ['acc:' + a.name, a.name])).map(([k, l]) => '<button class="tag' + (pnl.sel === k ? ' on' : '') + '" data-ps="' + esc(k) + '">' + esc(l) + '</button>').join('') + '</div>';
+    if (!d) return nav + chips + '<div class="card empty"><b>' + (pnl.err ? 'Calendario no disponible' : 'Cargando…') + '</b>' + esc(pnl.err) + '</div>';
+    const y = pnl.y, m = pnl.m, days = d.days || {};
+    let tot = 0, ops = 0, green = 0, red = 0, best = null, worst = null, traded = 0;
+    Object.keys(days).forEach(k => { const x = days[k]; tot += x.p; ops += x.n; traded++; if (x.p > 0.004) green++; else if (x.p < -0.004) red++;
+      if (!best || x.p > best.v) best = { v: x.p, k }; if (!worst || x.p < worst.v) worst = { v: x.p, k }; });
+    const dd = k => k ? +k.slice(8) + ' ' + MESES[+k.slice(5, 7) - 1].slice(0, 3).toLowerCase() : '';
+    let h = nav + chips;
+    h += '<div class="pn-kpis"><div class="card"><small>P&amp;L del mes</small><b class="mono ' + cls(tot) + '">' + money(tot, true) + '</b><span>' + ops + ' operaciones</span></div>' +
+      '<div class="card"><small>Días verdes / rojos</small><b><span class="pos">' + green + '</span> / <span class="neg">' + red + '</span></b><span>' + (traded ? Math.round(green / traded * 100) : 0) + '% días ganadores</span></div>' +
+      '<div class="card"><small>Mejor día</small><b class="mono ' + cls(best ? best.v : 0) + '">' + (best ? money(best.v, true) : '—') + '</b><span>' + (best ? dd(best.k) : '') + '</span></div>' +
+      '<div class="card"><small>Peor día</small><b class="mono ' + cls(worst ? worst.v : 0) + '">' + (worst ? money(worst.v, true) : '—') + '</b><span>' + (worst ? dd(worst.k) : '') + '</span></div></div>';
+    const maxAbs = Math.max(1, ...Object.keys(days).map(k => Math.abs(days[k].p)));
+    const first = new Date(Date.UTC(y, m, 1)), last = new Date(Date.UTC(y, m + 1, 0));
+    const start = new Date(first); start.setUTCDate(start.getUTCDate() - ((start.getUTCDay() + 6) % 7));
+    const now = new Date(); const todayK = now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate());
+    h += '<div class="card pn-grid"><div class="pn-h">L</div><div class="pn-h">M</div><div class="pn-h">X</div><div class="pn-h">J</div><div class="pn-h">V</div><div class="pn-h">Sem.</div>';
+    for (let mon = new Date(start); mon <= last; mon.setUTCDate(mon.getUTCDate() + 7)) {
+      let ws = 0, wn = 0;
+      for (let i = 0; i < 5; i++) {
+        const dt = new Date(mon); dt.setUTCDate(dt.getUTCDate() + i);
+        const k = dt.toISOString().slice(0, 10), inM = dt.getUTCMonth() === m, x = inM ? days[k] : null;
+        if (x) { ws += x.p; wn++; }
+        let st2 = '';
+        if (x && Math.abs(x.p) > 0.004) { const a = (0.14 + 0.46 * Math.min(1, Math.abs(x.p) / maxAbs)).toFixed(2); st2 = ' style="background:' + (x.p > 0 ? 'rgba(34,197,94,' + a + ')' : 'rgba(239,68,68,' + a + ')') + '"'; }
+        h += '<div class="pn-d' + (inM ? '' : ' out') + (x ? ' has' : '') + (k === todayK ? ' today' : '') + '"' + (x ? ' data-pd="' + k + '"' : '') + st2 + '><i>' + dt.getUTCDate() + '</i>' +
+          (x ? '<b>' + mshort(x.p) + '</b><small>' + x.n + ' op</small>' : '') + '</div>';
+      }
+      h += '<div class="pn-w">' + (wn ? '<b class="' + cls(ws) + '">' + mshort(ws) + '</b><small>' + wn + ' d</small>' : '<small>—</small>') + '</div>';
+    }
+    h += '</div><p class="mut" style="font-size:11.5px;text-align:center;margin:6px 8px 0">Resultado neto con comisiones. Toca un día para ver sus operaciones.</p>';
+    return h;
+  }
+  function pnlDaySheet(k) {
+    const x = pnl.data && pnl.data.days && pnl.data.days[k]; if (!x) return;
+    const t = new Date(k + 'T12:00:00Z').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+    sheet('<h3>' + esc(t.charAt(0).toUpperCase() + t.slice(1)) + '</h3><p>' + x.n + ' operaciones · ' + Math.round(x.w / x.n * 100) + '% acierto · <b class="' + cls(x.p) + '">' + money(x.p, true) + '</b></p>' +
+      '<div class="card" style="padding:4px 14px">' + x.t.map(r => '<div class="fl"><div><span class="n">' + esc(r[2]) + ' · ' + (r[3] === 'Short' ? 'Venta' : 'Compra') + ' ' + r[4] + '</span><small>' + esc(r[0]) + ' · ' + esc(r[1]) + '</small></div>' +
+        '<b class="mono ' + cls(r[5]) + '">' + money(r[5], true) + '</b></div>').join('') + '</div>' +
+      '<button class="btn wide" data-x="close" style="margin-top:6px">Cerrar</button>', (b, close) => b.querySelector('[data-x=close]').onclick = close);
+  }
+
   $('#view').addEventListener('click', e => {
+    const pm = e.target.closest('[data-pm]');
+    if (pm) { const d = new Date(pnl.y, pnl.m + Number(pm.dataset.pm), 1); pnl.y = d.getFullYear(); pnl.m = d.getMonth(); render(); loadPnl(true); return; }
+    const ps = e.target.closest('[data-ps]');
+    if (ps) { pnl.sel = ps.dataset.ps; try { localStorage.setItem(PNL_LS, pnl.sel); } catch (x) {} render(); loadPnl(true); return; }
+    const pd = e.target.closest('[data-pd]'); if (pd) return pnlDaySheet(pd.dataset.pd);
     const a = e.target.closest('[data-acts]'); if (a) return actionsSheet(a.getAttribute('data-acts'));
     if (e.target.closest('#cpPower')) {
       const c = st.live && st.live.copy; if (!c) return;
@@ -534,6 +611,7 @@
     }
   });
 
+  setInterval(() => { if (st.view === 'pnl' && st.core && Date.now() - pnl.at > 60000 && !document.hidden) loadPnl(true); }, 5000);
   setInterval(() => { header(); if (st.view === 'cal' && st.cal) render(); else if (st.view === 'accounts' && st.live && rows().some(x => x.shield && x.shield.locked)) scheduleRender(); }, 1000);
 
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});

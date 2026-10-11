@@ -27,7 +27,7 @@ try { webpush = require('web-push'); } catch (e) { webpush = null; }
 const CH_RE = /^[A-Za-z0-9_-]{16,64}$/;
 const MAX_MSG = 512 * 1024;
 const MAX_PHONES = 5;
-const PHONE_CMDS = new Set(['flatten', 'cancelOrders', 'shield', 'manualLock', 'copyOn']);
+const PHONE_CMDS = new Set(['flatten', 'cancelOrders', 'shield', 'manualLock', 'copyOn', 'pnlMonth']);
 const PUSH_KINDS = {
   lock: 'Cuenta bloqueada', unlock: 'Cuenta desbloqueada', closeFail: 'Revisa la posición',
   blind: 'Escudo sin datos', blocked: 'Orden cancelada', copyWarn: 'Copiador'
@@ -225,6 +225,9 @@ module.exports = function attach(app, server, opts) {
           if (m.account != null) out.account = String(m.account).slice(0, 80);
           if (m.on != null) out.on = m.on === true || m.on === 'true' ? 'true' : 'false';
           if (m.hours != null) out.hours = String(Math.max(1, Math.min(24, parseInt(m.hours, 10) || 1)));
+          if (m.year != null) out.year = String(parseInt(m.year, 10) || 0);
+          if (m.month != null) out.month = String(parseInt(m.month, 10) || 0);
+          if (m.sel != null) out.sel = String(m.sel).slice(0, 90);
           send(c.core, out);
           return;
         }
