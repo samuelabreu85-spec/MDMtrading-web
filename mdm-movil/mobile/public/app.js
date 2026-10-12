@@ -24,6 +24,20 @@
 
   /* ── vinculación ─────────────────────────────────────────────── */
   const LS = 'mdm.m.pair';
+  const DEV_LS = 'mdm.m.dev';
+  function devId() {
+    let d = ''; try { d = localStorage.getItem(DEV_LS) || ''; } catch (e) {}
+    if (!/^[\w-]{8,64}$/.test(d)) { d = 'd' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10); try { localStorage.setItem(DEV_LS, d); } catch (e) {} }
+    return d;
+  }
+  function devName() {
+    const u = navigator.userAgent;
+    if (/iPhone/i.test(u)) return 'iPhone';
+    if (/iPad/i.test(u) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)) return 'iPad';
+    const m = u.match(/Android[^;)]*;\s*([^;)]+?)(?:\s+Build|\))/i);
+    if (m && m[1] && !/^(K|wv)$/i.test(m[1].trim())) return m[1].trim().slice(0, 30);
+    return /Android/i.test(u) ? 'Android' : 'Móvil';
+  }
   function readPair() { try { return JSON.parse(localStorage.getItem(LS) || 'null'); } catch (e) { return null; } }
   function savePair(p) { try { localStorage.setItem(LS, JSON.stringify(p)); } catch (e) {} }
   (function fromHash() {
@@ -47,7 +61,7 @@
     st.ws = ws;
     ws.onopen = () => {
       st.sock = true; st.retry = 0; st.err = '';
-      ws.send(JSON.stringify({ t: 'hello', role: 'phone', ch: pair.ch, key: pair.key }));
+      ws.send(JSON.stringify({ t: 'hello', role: 'phone', ch: pair.ch, key: pair.key, dev: devId(), name: devName() }));
       clearInterval(pingTimer); pingTimer = setInterval(() => { try { ws.send('{"t":"ping"}'); } catch (e) {} }, 20000);
       header();
     };
@@ -67,7 +81,12 @@
 
   function onMsg(m) {
     if (m.t === 'status') { st.core = !!m.core; if (m.push != null) st.push = !!m.push; if (!st.core) st.live = null; header(); render(); return; }
-    if (m.t === 'accounts') { st.core = true; st.live = m; header(); scheduleRender(); return; }
+    if (m.t === 'accounts') {
+      const first = !st.live; st.core = true; st.live = m; header();
+      if (first || st.view === 'accounts' || st.view === 'copy') scheduleRender();
+      return;
+    }
+    if (m.t === 'testpush') { toast(m.msg || '', m.ok ? 'ok' : 'err'); return; }
     if (m.t === 'ack') { const p = st.pending.get(String(m.id)); if (p) { st.pending.delete(String(m.id)); p.resolve({ ok: !!m.ok, msg: m.msg, data: m.data }); } return; }
     if (m.t === 'event') { eventToast(m); return; }
     if (m.t === 'error') { st.err = m.msg || 'Error'; render(); return; }
@@ -148,7 +167,18 @@
 
   /* ── vistas ──────────────────────────────────────────────────── */
   let rq = false;
-  function scheduleRender() { if (rq) return; rq = true; requestAnimationFrame(() => { rq = false; render(); }); }
+  // Mientras el dedo está en la pantalla (o justo al soltar, con la inercia) no se repinta:
+  // repintar a mitad de un deslizamiento lo corta y lo devuelve al principio.
+  let touching = false, touchEnd = 0, deferred = false;
+  const touchBusy = () => touching || Date.now() - touchEnd < 600;
+  document.addEventListener('touchstart', () => { touching = true; }, { passive: true });
+  const onTouchEnd = () => { touching = false; touchEnd = Date.now(); setTimeout(() => { if (deferred && !touchBusy()) { deferred = false; scheduleRender(); } }, 650); };
+  document.addEventListener('touchend', onTouchEnd, { passive: true });
+  document.addEventListener('touchcancel', onTouchEnd, { passive: true });
+  function scheduleRender() {
+    if (touchBusy()) { deferred = true; return; }
+    if (rq) return; rq = true; requestAnimationFrame(() => { rq = false; render(); });
+  }
 
   /* ── instalar la app ─────────────────────────────────────────
      Android (Chrome): botón que abre la ventana de instalación del sistema.
@@ -180,7 +210,9 @@
   });
 
   function render() {
+    const keepX = [...document.querySelectorAll('#view .pn-chips')].map(e => e.scrollLeft);
     renderInner();
+    document.querySelectorAll('#view .pn-chips').forEach((e, i) => { if (keepX[i]) e.scrollLeft = keepX[i]; });
     if (!pair || st.view === 'accounts') { const b = installBanner(); if (b) $('#view').insertAdjacentHTML('afterbegin', b); }
   }
 
@@ -493,7 +525,8 @@
     const inst = standalone() ? '' : '<div class="card"><div class="set"><div><b>Instalar en el móvil</b><small>' +
       (isIOS ? 'En Safari: botón Compartir → «Añadir a pantalla de inicio». Así funcionan también los avisos.' : 'En Chrome: menú ⋮ → «Añadir a pantalla de inicio» o «Instalar aplicación».') + '</small></div></div></div>';
     return inst + '<h2>Avisos</h2><div class="card"><div class="set"><div><b>Avisos en el móvil</b><small id="pushTxt">Cuenta bloqueada, desbloqueada, fallos al cerrar y copiador.</small></div>' +
-      '<label class="sw"><input type="checkbox" id="swPush" disabled><span></span></label></div></div>' +
+      '<label class="sw"><input type="checkbox" id="swPush" disabled><span></span></label></div>' +
+      '<div class="set" id="pushTestRow" hidden><div><b>Probar avisos</b><small>Bloquea el móvil después de pulsar: te llegará un aviso de prueba.</small></div><button class="btn" id="pushTest">Probar</button></div></div>' +
       '<h2>Vinculación</h2><div class="card"><div class="set"><div><b>PC vinculado</b><small>' + (pair && pair.pc ? esc(pair.pc) + ' · ' : '') +
       (st.core ? 'NinjaTrader conectado' : st.sock ? 'NinjaTrader sin conexión' : 'sin conexión') + '</small></div></div>' +
       '<div class="set"><div><b>Desvincular este móvil</b><small>Para volver a usarlo tendrás que escanear el QR otra vez.</small></div><button class="btn" id="unpair">Desvincular</button></div></div>' +
@@ -505,16 +538,31 @@
     else {
       const ps = await pushState().catch(() => 'no');
       if (ps === 'no') txt.textContent = 'Este navegador no admite avisos.';
-      else { sw.disabled = false; sw.checked = ps === 'on'; }
+      else {
+        const k = await fetch('api/vapid').then(r => r.json()).catch(() => ({}));
+        if (!k.key) txt.textContent = 'Los avisos todavía no están activados en el servidor de MDM.';
+        else { sw.disabled = false; sw.checked = ps === 'on'; $('#pushTestRow').hidden = ps !== 'on'; }
+      }
       sw.onchange = async () => {
         sw.disabled = true;
         try { if (sw.checked) { await enablePush(); toast('Avisos activados', 'ok'); } else { await disablePush(); toast('Avisos desactivados', 'ok'); } }
         catch (e) { sw.checked = !sw.checked; toast(e.message || 'No se pudo', 'err'); }
         sw.disabled = false;
+        $('#pushTestRow').hidden = !sw.checked;
+      };
+      $('#pushTest').onclick = async () => {
+        try {
+          const reg = await navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription();
+          if (!sub) return toast('Activa primero los avisos.', 'err');
+          if (!st.ws || st.ws.readyState !== 1) return toast('Sin conexión con el servidor.', 'err');
+          const j = sub.toJSON();
+          st.ws.send(JSON.stringify({ t: 'testpush', endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth }));
+        } catch (e) { toast(e.message || 'No se pudo', 'err'); }
       };
     }
     $('#unpair').onclick = () => confirmSheet('Desvincular', 'Este móvil dejará de ver tus cuentas.', 'Desvincular', true, async () => {
       try { await disablePush(); } catch (e) {}
+      try { st.ws && st.ws.readyState === 1 && st.ws.send(JSON.stringify({ t: 'bye' })); } catch (e) {}
       try { localStorage.removeItem(LS); } catch (e) {}
       pair = null; try { st.ws && st.ws.close(); } catch (e) {}
       st.live = null; st.view = 'accounts'; render(); header();

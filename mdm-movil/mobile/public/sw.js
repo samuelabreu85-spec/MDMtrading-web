@@ -1,5 +1,5 @@
 /* MDM móvil · service worker: app instalable, arranque sin red y avisos push */
-const CACHE = 'mdm-m-v5';
+const CACHE = 'mdm-m-v6';
 const SHELL = ['./', 'index.html', 'app.js', 'app.css', 'manifest.webmanifest',
   'img/icon-192.png', 'img/icon-512.png', 'img/badge-96.png',
   'fonts/cinzel-latin-700-normal.woff2', 'fonts/cinzel-latin-900-normal.woff2',
@@ -30,7 +30,7 @@ self.addEventListener('push', e => {
   e.waitUntil((async () => {
     // Si la app está abierta y a la vista, ya lo enseña ella: no duplicamos
     const cs = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
-    if (cs.some(c => c.visibilityState === 'visible')) return;
+    if (!d.force && cs.some(c => c.visibilityState === 'visible')) return;
     await self.registration.showNotification(d.title || 'MDM', {
       body: d.body || '', tag: d.tag || 'mdm', renotify: true,
       icon: 'img/icon-192.png', badge: 'img/badge-96.png', vibrate: [120, 60, 120]

@@ -63,7 +63,8 @@ module.exports = function attach(app, server, opts) {
   const send = (ws, obj) => { try { if (ws && ws.readyState === 1) ws.send(typeof obj === 'string' ? obj : JSON.stringify(obj)); } catch (e) {} };
   const toPhones = (c, obj) => { const s = typeof obj === 'string' ? obj : JSON.stringify(obj); c.phones.forEach(p => send(p, s)); };
   const phoneStatus = c => toPhones(c, { t: 'status', core: !!(c.core && c.core.readyState === 1) });
-  const tellCorePhones = c => send(c.core, { t: 'phones', n: c.phones.size });
+  const tellCorePhones = (c, ws) => send(c.core, Object.assign({ t: 'phones', n: c.phones.size }, ws && ws.dev ? { dev: ws.dev, name: ws.devName } : {}));
+  const sendPush = (s, payload) => webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 3600, urgency: 'high' });
   const cleanup = ch => {
     const c = channels.get(ch);
     if (c && !c.core && c.phones.size === 0) channels.delete(ch);
@@ -173,16 +174,18 @@ module.exports = function attach(app, server, opts) {
           c.phones.forEach(p => { if (!safeEq(p.keyHash, kh)) { send(p, { t: 'error', msg: 'Vinculación caducada. Vuelve a escanear el QR desde el PC.' }); p.close(4003, 'clave'); c.phones.delete(p); } });
           send(ws, { t: 'welcome', phones: c.phones.size, push: pushOn });
           phoneStatus(c);
+          c.phones.forEach(p => { if (p.dev) tellCorePhones(c, p); });
           return;
         }
         if (m.role === 'phone') {
           if (c.keyHash && !safeEq(c.keyHash, kh)) { send(ws, { t: 'error', msg: 'Vinculación caducada. Vuelve a escanear el QR desde el PC.' }); return ws.close(4003, 'clave'); }
           if (c.phones.size >= MAX_PHONES) { send(ws, { t: 'error', msg: 'Demasiados móviles vinculados a este PC.' }); return ws.close(4004, 'lleno'); }
           c.phones.add(ws); ws.role = 'phone';
+          if (/^[\w-]{8,64}$/.test(String(m.dev || ''))) { ws.dev = String(m.dev); ws.devName = String(m.name || 'Móvil').replace(/[^\w ·áéíóúñÁÉÍÓÚÑ.-]/g, '').slice(0, 40) || 'Móvil'; }
           const coreOn = !!(c.core && c.core.readyState === 1);
           send(ws, { t: 'status', core: coreOn, push: pushOn });
           if (coreOn && c.last) send(ws, c.last);
-          tellCorePhones(c);
+          tellCorePhones(c, ws);
           return;
         }
         return ws.close(4001, 'rol');
@@ -200,8 +203,8 @@ module.exports = function attach(app, server, opts) {
           if (pushOn && PUSH_KINDS[m.kind] && c.subs.size) {
             const payload = JSON.stringify({ title: 'MDM · ' + PUSH_KINDS[m.kind], body: String(m.msg || '').slice(0, 240), tag: 'mdm-' + m.kind + '-' + (m.account || '') });
             c.subs.forEach((s, ep) => {
-              webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { TTL: 3600, urgency: 'high' })
-                .catch(err => { if (err && (err.statusCode === 404 || err.statusCode === 410)) { c.subs.delete(ep); send(c.core, { t: 'unsub', endpoint: ep }); } });
+              sendPush(s, payload)
+                .catch(err => { log('aviso push fallido (' + (err && err.statusCode || err && err.message) + ')'); if (err && (err.statusCode === 404 || err.statusCode === 410)) { c.subs.delete(ep); send(c.core, { t: 'unsub', endpoint: ep }); } });
             });
           }
           return;
@@ -236,6 +239,22 @@ module.exports = function attach(app, server, opts) {
           if (!/^https:\/\//.test(s.endpoint)) return;
           c.subs.set(s.endpoint, s);
           send(c.core, Object.assign({ t: 'sub' }, s));
+          return;
+        }
+        if (m.t === 'testpush') {
+          const ok = msg => send(ws, { t: 'testpush', ok: true, msg }), ko = msg => send(ws, { t: 'testpush', ok: false, msg });
+          if (!pushOn) return ko('Los avisos no están activados en el servidor (faltan las claves VAPID).');
+          if (!m.endpoint || !m.p256dh || !m.auth || !/^https:\/\//.test(String(m.endpoint))) return ko('Este móvil no tiene los avisos activados.');
+          const s = { endpoint: String(m.endpoint).slice(0, 600), p256dh: String(m.p256dh).slice(0, 200), auth: String(m.auth).slice(0, 100) };
+          if (!c.subs.has(s.endpoint)) { c.subs.set(s.endpoint, s); send(c.core, Object.assign({ t: 'sub' }, s)); }
+          sendPush(s, JSON.stringify({ title: 'MDM · Prueba', body: 'Los avisos funcionan en este móvil.', tag: 'mdm-test', force: true }))
+            .then(() => ok('Aviso de prueba enviado.'))
+            .catch(err => ko('No se pudo enviar (' + (err && err.statusCode || 'error') + '). Desactiva y vuelve a activar los avisos.'));
+          return;
+        }
+        if (m.t === 'bye') {
+          if (ws.dev) send(c.core, { t: 'phonegone', dev: ws.dev });
+          ws.dev = null;
           return;
         }
         if (m.t === 'unsub' && m.endpoint) {
