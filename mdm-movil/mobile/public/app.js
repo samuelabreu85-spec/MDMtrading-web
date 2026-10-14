@@ -112,7 +112,16 @@
     if (navigator.vibrate && kind === 'err') navigator.vibrate(60);
   }
   const EV_T = { lock: 'Cuenta bloqueada', unlock: 'Cuenta desbloqueada', closeFail: 'Revisa la posición', blind: 'Escudo sin datos', blocked: 'Orden cancelada', copyWarn: 'Copiador' };
-  function eventToast(m) { if (EV_T[m.kind]) toast(m.msg || '', m.kind === 'unlock' ? 'ok' : 'err', EV_T[m.kind]); }
+  function eventToast(m) {
+    if (m.kind === 'entry' || m.kind === 'exit') {
+      const pr = getPrefs(); if (!pr.includes(m.kind === 'entry' ? 'e' : 'x')) return;
+      const t = String(m.title || ''); return toast(m.msg || '', /^SL/.test(t) ? 'err' : /^TP/.test(t) || m.kind === 'entry' ? 'ok' : '', t);
+    }
+    if (EV_T[m.kind]) toast(m.msg || '', m.kind === 'unlock' ? 'ok' : 'err', EV_T[m.kind]);
+  }
+  const PREFS_LS = 'mdm.m.prefs';
+  function getPrefs() { let p = null; try { p = localStorage.getItem(PREFS_LS); } catch (e) {} return (p != null && /^[a-z,]*$/.test(p)) ? p.split(',').filter(Boolean) : ['e', 'x']; }
+  function setPrefs(a) { try { localStorage.setItem(PREFS_LS, a.join(',')); } catch (e) {} }
 
   function sheet(html, bind) {
     const s = $('#sheet'), b = $('#sheetBox');
@@ -405,16 +414,39 @@
   function copyView() {
     const c = st.live && st.live.copy;
     if (!c) return '<div class="card empty"><b>Copiador no disponible</b>Actualiza MDMgestorCuentas en NinjaTrader.</div>';
-    const fol = c.followers || [];
-    const act = fol.filter(f => f.enabled).length;
+    const fol = c.followers || [], ml = String(c.master || '').toLowerCase();
+    const fOf = n => fol.find(f => f.name.toLowerCase() === n.toLowerCase());
+    const names = [...new Set(rows().map(x => x.name).concat(fol.map(f => f.name)))].filter(n => n.toLowerCase() !== ml);
+    const act = names.filter(n => { const f = fOf(n); return f && f.enabled; }).length;
     let h = '<div class="card"><div class="power"><button class="pw' + (c.on ? ' on' : '') + '" id="cpPower" aria-label="Encender o apagar">' + ICON.power + '</button>' +
-      '<div><b>' + (c.on ? 'Copiador encendido' : 'Copiador apagado') + '</b><small>' + (c.master ? 'Maestra: ' + esc(c.master) + (c.masterOk ? '' : ' (sin conexión)') : 'Sin cuenta maestra: elígela en el PC.') + '</small></div></div></div>';
-    h += '<h2>Seguidoras · ' + act + ' activas</h2><div class="card">' + (fol.length ? fol.map(f =>
-      '<div class="fl"><div><span class="n">' + esc(f.name) + '</span><small>x' + Number(f.ratio || 1).toLocaleString('es-ES') + (f.last ? ' · ' + esc(f.last) + (f.lastAt ? ' ' + esc(f.lastAt) : '') : '') + '</small></div>' +
-      (f.locked ? '<span class="tag bad">🔒 bloqueada</span>' : !f.connected ? '<span class="tag mut">sin conexión</span>' : f.enabled ? '<span class="tag ok">activa</span>' : '<span class="tag mut">pausada</span>') + '</div>').join('')
-      : '<div class="empty" style="padding:14px">Sin seguidoras. Se eligen desde el PC.</div>') + '</div>';
+      '<div><b>' + (c.on ? 'Copiador encendido' : 'Copiador apagado') + '</b><small>' + (c.on ? 'Lo que se ejecute en la maestra se copia en las seguidoras activas.' : 'Enciéndelo cuando vayas a operar.') + '</small></div></div>' +
+      '<div class="fl"><div><small>Cuenta maestra</small><span class="n">' + (c.master ? esc(c.master) : 'Sin elegir') + '</span>' + (c.master && !c.masterOk ? '<small style="color:#fca5a5">sin conexión</small>' : '') + '</div>' +
+      '<button class="btn" id="cpMaster">Cambiar</button></div></div>';
+    h += '<h2>Seguidoras · ' + act + ' activas</h2><div class="card">' + (names.length ? names.map(n => {
+      const f = fOf(n) || { name: n, ratio: 1, enabled: false, connected: rows().some(x => x.name === n) };
+      const tag = f.locked ? '<span class="tag bad">🔒</span>' : f.connected === false ? '<span class="tag mut">sin conexión</span>' : '';
+      return '<div class="fl"><div><span class="n">' + esc(n) + '</span><small>x' + Number(f.ratio || 1).toLocaleString('es-ES') + (f.last ? ' · ' + esc(f.last) + (f.lastAt ? ' ' + esc(f.lastAt) : '') : '') + '</small></div>' +
+        '<div style="display:flex;align-items:center;gap:8px">' + tag + '<label class="sw"><input type="checkbox" data-cpf="' + esc(n) + '"' + (f.enabled ? ' checked' : '') + '><span></span></label></div></div>';
+    }).join('') : '<div class="empty" style="padding:14px">No hay más cuentas conectadas.</div>') + '</div>' +
+      '<p class="mut" style="font-size:11.5px;text-align:center;margin:6px 8px 0">El ratio de cada seguidora se cambia desde el PC.</p>';
     if (c.feed && c.feed.length) h += '<h2>Últimos movimientos</h2><div class="card feed">' + c.feed.slice(0, 12).map(x => '<div>' + esc(x) + '</div>').join('') + '</div>';
     return h;
+  }
+  function masterSheet() {
+    const c = (st.live && st.live.copy) || {}, cur = String(c.master || '').toLowerCase();
+    const list = rows();
+    sheet('<h3>Cuenta maestra</h3><p>Lo que se ejecute en esta cuenta se copiará en las seguidoras. Recomendado: una cuenta <b>Sim</b>.' +
+      (c.on ? '<br><b style="color:#fcd34d">El copiador está encendido: al cambiarla se apagará por seguridad.</b>' : '') + '</p>' +
+      list.map(x => '<button class="opt' + (x.name.toLowerCase() === cur ? ' gold' : '') + '" data-cpm="' + esc(x.name) + '"' + (x.name.toLowerCase() === cur ? ' disabled' : '') + '><div><b>' + esc(x.name) + '</b><small>' +
+        esc(x.sim ? 'Simulación' : (x.connection || '')) + (x.positions.length ? ' · con posición abierta' : '') + (x.name.toLowerCase() === cur ? ' · maestra actual' : '') + '</small></div></button>').join('') +
+      '<button class="btn wide" data-x="close" style="margin-top:6px">Cancelar</button>',
+      (b, close) => b.addEventListener('click', async e => {
+        if (e.target.closest('[data-x=close]')) return close();
+        const o = e.target.closest('[data-cpm]'); if (!o || o.disabled) return;
+        o.disabled = true; o.querySelector('small').textContent = 'Enviando…';
+        const r = await cmd('copyMaster', { account: o.dataset.cpm });
+        close(); toast(r.ok ? 'Maestra: ' + o.dataset.cpm : (r.msg || 'No se pudo'), r.ok ? 'ok' : 'err');
+      }));
   }
 
   /* ── calendario ──────────────────────────────────────────────── */
@@ -514,7 +546,7 @@
     if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToU8(k.key) });
     const j = sub.toJSON();
     if (!st.ws || st.ws.readyState !== 1) throw new Error('Sin conexión con el servidor.');
-    st.ws.send(JSON.stringify({ t: 'sub', endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth }));
+    st.ws.send(JSON.stringify({ t: 'sub', endpoint: j.endpoint, p256dh: j.keys.p256dh, auth: j.keys.auth, prefs: getPrefs().join(',') }));
   }
   async function disablePush() {
     const reg = await navigator.serviceWorker.ready;
@@ -524,8 +556,12 @@
   function settingsView() {
     const inst = standalone() ? '' : '<div class="card"><div class="set"><div><b>Instalar en el móvil</b><small>' +
       (isIOS ? 'En Safari: botón Compartir → «Añadir a pantalla de inicio». Así funcionan también los avisos.' : 'En Chrome: menú ⋮ → «Añadir a pantalla de inicio» o «Instalar aplicación».') + '</small></div></div></div>';
-    return inst + '<h2>Avisos</h2><div class="card"><div class="set"><div><b>Avisos en el móvil</b><small id="pushTxt">Cuenta bloqueada, desbloqueada, fallos al cerrar y copiador.</small></div>' +
+    return inst + '<h2>Avisos</h2><div class="card"><div class="set"><div><b>Avisos en el móvil</b><small id="pushTxt">Entradas, cierres (TP, BE o SL) y, si quieres, escudos y copiador.</small></div>' +
       '<label class="sw"><input type="checkbox" id="swPush" disabled><span></span></label></div>' +
+      '<div id="prefRows" hidden>' + [['e', 'Entradas', 'Cuando se abre una posición: compra o venta, contratos y precio.'],
+        ['x', 'Cierres', 'TP, BE o SL con el resultado en $.'],
+        ['r', 'Escudos y copiador', 'Cuenta bloqueada o desbloqueada y avisos del copiador.']].map(([k, t, d]) =>
+        '<div class="set"><div><b>' + t + '</b><small>' + d + '</small></div><label class="sw"><input type="checkbox" data-pref="' + k + '"' + (getPrefs().includes(k) ? ' checked' : '') + '><span></span></label></div>').join('') + '</div>' +
       '<div class="set" id="pushTestRow" hidden><div><b>Probar avisos</b><small>Bloquea el móvil después de pulsar: te llegará un aviso de prueba.</small></div><button class="btn" id="pushTest">Probar</button></div></div>' +
       '<h2>Vinculación</h2><div class="card"><div class="set"><div><b>PC vinculado</b><small>' + (pair && pair.pc ? esc(pair.pc) + ' · ' : '') +
       (st.core ? 'NinjaTrader conectado' : st.sock ? 'NinjaTrader sin conexión' : 'sin conexión') + '</small></div></div>' +
@@ -541,15 +577,20 @@
       else {
         const k = await fetch('api/vapid').then(r => r.json()).catch(() => ({}));
         if (!k.key) txt.textContent = 'Los avisos todavía no están activados en el servidor de MDM.';
-        else { sw.disabled = false; sw.checked = ps === 'on'; $('#pushTestRow').hidden = ps !== 'on'; }
+        else { sw.disabled = false; sw.checked = ps === 'on'; $('#pushTestRow').hidden = $('#prefRows').hidden = ps !== 'on'; }
       }
       sw.onchange = async () => {
         sw.disabled = true;
         try { if (sw.checked) { await enablePush(); toast('Avisos activados', 'ok'); } else { await disablePush(); toast('Avisos desactivados', 'ok'); } }
         catch (e) { sw.checked = !sw.checked; toast(e.message || 'No se pudo', 'err'); }
         sw.disabled = false;
-        $('#pushTestRow').hidden = !sw.checked;
+        $('#pushTestRow').hidden = $('#prefRows').hidden = !sw.checked;
       };
+      document.querySelectorAll('[data-pref]').forEach(cb => cb.onchange = async () => {
+        const a = [...document.querySelectorAll('[data-pref]')].filter(x => x.checked).map(x => x.dataset.pref);
+        setPrefs(a);
+        try { if ((await pushState()) === 'on') await enablePush(); toast('Guardado', 'ok'); } catch (e) { toast(e.message || 'No se pudo guardar', 'err'); }
+      });
       $('#pushTest').onclick = async () => {
         try {
           const reg = await navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription();
@@ -651,12 +692,21 @@
     if (ps) { pnl.sel = ps.dataset.ps; try { localStorage.setItem(PNL_LS, pnl.sel); } catch (x) {} render(); loadPnl(true); return; }
     const pd = e.target.closest('[data-pd]'); if (pd) return pnlDaySheet(pd.dataset.pd);
     const a = e.target.closest('[data-acts]'); if (a) return actionsSheet(a.getAttribute('data-acts'));
+    if (e.target.closest('#cpMaster')) return masterSheet();
     if (e.target.closest('#cpPower')) {
       const c = st.live && st.live.copy; if (!c) return;
       const on = !c.on;
       confirmSheet(on ? 'Encender copiador' : 'Apagar copiador', on ? 'Todo lo que se haga en <b>' + esc(c.master || 'la maestra') + '</b> se copiará en las seguidoras activas.' : 'Las seguidoras dejarán de copiar. Lo que esté abierto sigue abierto.',
         on ? 'Encender' : 'Apagar', !on, async () => Object.assign(await cmd('copyOn', { on }), { okMsg: on ? 'Copiador encendido' : 'Copiador apagado' }));
     }
+  });
+
+  $('#view').addEventListener('change', async e => {
+    const t = e.target.closest('[data-cpf]'); if (!t) return;
+    const on = t.checked; t.disabled = true;
+    const r = await cmd('copyFollower', { account: t.dataset.cpf, on });
+    if (!r.ok) { t.checked = !on; toast(r.msg || 'No se pudo', 'err'); } else toast(t.dataset.cpf + (on ? ' copiará' : ' en pausa'), 'ok');
+    t.disabled = false;
   });
 
   setInterval(() => { if (st.view === 'pnl' && st.core && Date.now() - pnl.at > 60000 && !document.hidden) loadPnl(true); }, 5000);
