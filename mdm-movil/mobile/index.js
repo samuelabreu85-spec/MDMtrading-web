@@ -27,11 +27,18 @@ try { webpush = require('web-push'); } catch (e) { webpush = null; }
 const CH_RE = /^[A-Za-z0-9_-]{16,64}$/;
 const MAX_MSG = 512 * 1024;
 const MAX_PHONES = 5;
-const PHONE_CMDS = new Set(['flatten', 'cancelOrders', 'shield', 'manualLock', 'copyOn', 'pnlMonth']);
+const PHONE_CMDS = new Set(['flatten', 'cancelOrders', 'shield', 'manualLock', 'copyOn', 'copyMaster', 'copyFollower', 'pnlMonth']);
 const PUSH_KINDS = {
   lock: 'Cuenta bloqueada', unlock: 'Cuenta desbloqueada', closeFail: 'Revisa la posición',
-  blind: 'Escudo sin datos', blocked: 'Orden cancelada', copyWarn: 'Copiador'
+  blind: 'Escudo sin datos', blocked: 'Orden cancelada', copyWarn: 'Copiador',
+  entry: 'Entrada', exit: 'Cierre'
 };
+// Qué tipo de aviso pide cada móvil: e = entradas, x = cierres (TP/BE/SL), r = escudos y copiador.
+// «Revisa la posición» (closeFail) llega siempre: es un fallo que hay que mirar.
+const PREF_OF = { entry: 'e', exit: 'x', lock: 'r', unlock: 'r', blind: 'r', blocked: 'r', copyWarn: 'r', closeFail: null };
+const DEFAULT_PREFS = 'e,x';
+const cleanPrefs = p => (typeof p === 'string' && /^[a-z,]{0,20}$/.test(p)) ? p : DEFAULT_PREFS;
+const wants = (sub, kind) => { const k = PREF_OF[kind]; return k === null || cleanPrefs(sub.prefs).split(',').includes(k); };
 const FF_URL = process.env.MDM_FF_URL || 'https://nfs.faireconomy.media/ff_calendar_thisweek.xml';
 
 const sha = s => crypto.createHash('sha256').update(String(s)).digest('hex');
@@ -168,7 +175,7 @@ module.exports = function attach(app, server, opts) {
           c.keyHash = kh;
           c.subs.clear();
           (Array.isArray(m.subs) ? m.subs : []).slice(0, 10).forEach(s => {
-            if (s && s.endpoint && s.p256dh && s.auth) c.subs.set(s.endpoint, s);
+            if (s && s.endpoint && s.p256dh && s.auth) c.subs.set(s.endpoint, { endpoint: s.endpoint, p256dh: s.p256dh, auth: s.auth, prefs: cleanPrefs(s.prefs) });
           });
           // móviles que esperaban con otra clave: fuera
           c.phones.forEach(p => { if (!safeEq(p.keyHash, kh)) { send(p, { t: 'error', msg: 'Vinculación caducada. Vuelve a escanear el QR desde el PC.' }); p.close(4003, 'clave'); c.phones.delete(p); } });
@@ -201,8 +208,11 @@ module.exports = function attach(app, server, opts) {
         if (m.t === 'event') {
           toPhones(c, m);
           if (pushOn && PUSH_KINDS[m.kind] && c.subs.size) {
-            const payload = JSON.stringify({ title: 'MDM · ' + PUSH_KINDS[m.kind], body: String(m.msg || '').slice(0, 240), tag: 'mdm-' + m.kind + '-' + (m.account || '') });
+            const trade = m.kind === 'entry' || m.kind === 'exit';
+            const payload = JSON.stringify({ title: m.title ? String(m.title).slice(0, 80) : 'MDM · ' + PUSH_KINDS[m.kind], body: String(m.msg || '').slice(0, 240),
+              tag: trade ? 'mdm-t-' + Date.now() : 'mdm-' + m.kind + '-' + (m.account || '') });
             c.subs.forEach((s, ep) => {
+              if (!wants(s, m.kind)) return;
               sendPush(s, payload)
                 .catch(err => { log('aviso push fallido (' + (err && err.statusCode || err && err.message) + ')'); if (err && (err.statusCode === 404 || err.statusCode === 410)) { c.subs.delete(ep); send(c.core, { t: 'unsub', endpoint: ep }); } });
             });
@@ -235,7 +245,7 @@ module.exports = function attach(app, server, opts) {
           return;
         }
         if (m.t === 'sub' && m.endpoint && m.p256dh && m.auth) {
-          const s = { endpoint: String(m.endpoint).slice(0, 600), p256dh: String(m.p256dh).slice(0, 200), auth: String(m.auth).slice(0, 100) };
+          const s = { endpoint: String(m.endpoint).slice(0, 600), p256dh: String(m.p256dh).slice(0, 200), auth: String(m.auth).slice(0, 100), prefs: cleanPrefs(m.prefs) };
           if (!/^https:\/\//.test(s.endpoint)) return;
           c.subs.set(s.endpoint, s);
           send(c.core, Object.assign({ t: 'sub' }, s));
