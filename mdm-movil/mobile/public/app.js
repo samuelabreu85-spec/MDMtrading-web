@@ -366,7 +366,7 @@
   function actionsSheet(name) {
     const x = rows().find(a => a.name === name); if (!x) return;
     const s = x.shield || {};
-    const cfg = (st.live && st.live.shieldCfg) || {};
+    const cfg = s.rules || (st.live && st.live.shieldCfg) || {};   // Core 1.5+: ventana de escudo por cuenta
     const winOpen = !!cfg.shieldWindowOpen || !!cfg.shieldWindowAvailable;
     const canOff = s.protected && !s.locked && winOpen;
     const hasPos = x.positions.length > 0;
