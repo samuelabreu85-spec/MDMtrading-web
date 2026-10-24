@@ -10,7 +10,23 @@ app.get(/^\/(?:.*\/)?(?:www\.)?mdmtrading\.net(\/.*)?$/i, (req, res) => {
   res.redirect(301, req.params[0] || '/');
 });
 
-app.use(express.static(path.join(__dirname)));
+// Bloquea archivos internos que no deben descargarse
+app.use((req, res, next) => {
+  if (/^\/(server\.js|package(-lock)?\.json|mdm-movil\/mobile\.js)$/i.test(req.path)) {
+    return res.status(404).end();
+  }
+  next();
+});
+
+// El HTML se revalida siempre, así los alumnos ven la versión nueva
+app.use(express.static(path.join(__dirname), {
+  etag: true,
+  setHeaders: (res, filePath) => {
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache');
+    }
+  }
+}));
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
