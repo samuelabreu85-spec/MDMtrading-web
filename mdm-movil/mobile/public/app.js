@@ -376,8 +376,10 @@
       '</small></div><label class="sw"><input type="checkbox" id="swShield"' + (s.protected ? ' checked' : '') + ((s.protected && !canOff) ? ' disabled' : '') + '><span></span></label></div>' +
       '<button class="opt gold" data-a="lock"' + (!s.protected || s.locked ? ' disabled' : '') + '>' + ICON.lock + '<div><b>Bloquear ahora</b><small>' + (s.protected ? 'Bloqueo manual de 1 a 24 h.' : 'Activa antes el escudo.') + '</small></div></button>' +
       '<button class="opt" data-a="cancel"' + (!x.orders ? ' disabled' : '') + '>' + ICON.x + '<div><b>Cancelar órdenes</b><small>' + (x.orders ? x.orders + ' órdenes vivas (SL y TP incluidos).' : 'No hay órdenes vivas.') + '</small></div></button>' +
-      '<button class="opt danger" data-a="flatten"' + (!(hasPos || x.orders) ? ' disabled' : '') + '>' + ICON.stop + '<div><b>Aplanar cuenta</b><small>' + (hasPos ? 'Cierra a mercado todas las posiciones.' : 'No hay posiciones abiertas.') + '</small></div></button>',
+      '<button class="opt danger" data-a="flatten"' + (!(hasPos || x.orders) ? ' disabled' : '') + '>' + ICON.stop + '<div><b>Aplanar cuenta</b><small>' + (hasPos ? 'Cierra a mercado todas las posiciones.' : 'No hay posiciones abiertas.') + '</small></div></button>' +
+      '<h2 style="margin:18px 0 8px">Operaciones de hoy</h2><div id="accTrades"><div class="mut" style="padding:10px 0;font-size:13px">Cargando…</div></div>',
       (b, close) => {
+        loadAccTrades(name, b.querySelector('#accTrades'));
         b.querySelector('#swShield').addEventListener('change', async e => {
           const on = e.target.checked; e.target.disabled = true;
           const r = await cmd('shield', { account: name, on });
@@ -676,12 +678,39 @@
     h += '</div><p class="mut" style="font-size:11.5px;text-align:center;margin:6px 8px 0">Resultado neto con comisiones. Toca un día para ver sus operaciones.</p>';
     return h;
   }
+  // Una operación: r = [cierre, cuenta, activo, dirección, contratos, neto, iso, entrada, ticks, precio entrada, precio salida]
+  function tradeRow(r, withAcc) {
+    const tk = r[8] == null ? null : Number(r[8]);
+    const tks = tk == null ? '' : '<small class="tk ' + cls(tk) + '">' + (tk > 0 ? '+' : tk < 0 ? '−' : '') + Math.abs(tk).toLocaleString('es-ES') + ' ticks</small>';
+    const hrs = r[7] ? '<span class="hr">' + esc(r[7]) + ' → ' + esc(r[0]) + '</span>' : esc(r[0]);
+    return '<div class="fl"><div><span class="n">' + esc(r[2]) + ' · ' + (r[3] === 'Short' ? 'Venta' : 'Compra') + ' ' + r[4] + '</span><small>' + hrs + (withAcc ? ' · ' + esc(r[1]) : '') + '</small></div>' +
+      '<div style="text-align:right"><b class="mono ' + cls(r[5]) + '">' + money(r[5], true) + '</b>' + tks + '</div></div>';
+  }
+  // Día de sesión de hoy (igual que el Core: desde las 18:00 de Nueva York cuenta para el día siguiente; finde → lunes)
+  function sessionToday() {
+    const p = new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', hour12: false, year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit' })
+      .formatToParts(new Date()).reduce((o, v) => (o[v.type] = v.value, o), {});
+    const d = new Date(Date.UTC(+p.year, +p.month - 1, +p.day));
+    if ((+p.hour % 24) >= 18) d.setUTCDate(d.getUTCDate() + 1);
+    while (d.getUTCDay() === 0 || d.getUTCDay() === 6) d.setUTCDate(d.getUTCDate() + 1);
+    return { y: d.getUTCFullYear(), m: d.getUTCMonth() + 1, key: d.toISOString().slice(0, 10) };
+  }
+  async function loadAccTrades(name, box) {
+    const t = sessionToday();
+    const r = await cmd('pnlMonth', { year: t.y, month: t.m, sel: 'acc:' + name });
+    if (!box.isConnected) return;
+    if (!r.ok || !r.data) { box.innerHTML = '<div class="mut" style="padding:10px 0;font-size:13px">' + esc(/solo se puede hacer desde el PC/i.test(r.msg || '') ? 'Actualiza MDMgestorCuentas en NinjaTrader para verlas.' : (r.msg || 'No se pudieron cargar.')) + '</div>'; return; }
+    const d = r.data.days && r.data.days[t.key];
+    if (!d || !d.t.length) { box.innerHTML = '<div class="mut" style="padding:10px 0;font-size:13px">Sin operaciones cerradas hoy.</div>'; return; }
+    const list = d.t.slice().sort((a, b) => String(b[6]).localeCompare(String(a[6])));
+    box.innerHTML = '<div class="card" style="padding:4px 14px;margin:0">' + list.map(x => tradeRow(x, false)).join('') + '</div>';
+  }
+
   function pnlDaySheet(k) {
     const x = pnl.data && pnl.data.days && pnl.data.days[k]; if (!x) return;
     const t = new Date(k + 'T12:00:00Z').toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
     sheet('<h3>' + esc(t.charAt(0).toUpperCase() + t.slice(1)) + '</h3><p>' + x.n + ' operaciones · ' + Math.round(x.w / x.n * 100) + '% acierto · <b class="' + cls(x.p) + '">' + money(x.p, true) + '</b></p>' +
-      '<div class="card" style="padding:4px 14px">' + x.t.map(r => '<div class="fl"><div><span class="n">' + esc(r[2]) + ' · ' + (r[3] === 'Short' ? 'Venta' : 'Compra') + ' ' + r[4] + '</span><small>' + esc(r[0]) + ' · ' + esc(r[1]) + '</small></div>' +
-        '<b class="mono ' + cls(r[5]) + '">' + money(r[5], true) + '</b></div>').join('') + '</div>' +
+      '<div class="card" style="padding:4px 14px">' + x.t.map(r => tradeRow(r, true)).join('') + '</div>' +
       '<button class="btn wide" data-x="close" style="margin-top:6px">Cerrar</button>', (b, close) => b.querySelector('[data-x=close]').onclick = close);
   }
 

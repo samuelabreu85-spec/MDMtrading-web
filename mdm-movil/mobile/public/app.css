@@ -185,3 +185,5 @@ h2{font:900 15px/1.2 'Cinzel',serif;letter-spacing:1.6px;color:var(--gold2);text
 .pn-w b{font-size:11px;font-variant-numeric:tabular-nums} .pn-w small{font-size:9.5px;color:var(--t3)}
 .pn-kpis b>span{display:inline;font-size:inherit;margin:0}
 .pn-kpis b>span.pos{color:var(--pos)} .pn-kpis b>span.neg{color:var(--neg)}
+.fl small.tk{font-weight:700;margin-top:2px} .fl small.tk.pos{color:#4ade80} .fl small.tk.neg{color:#f87171}
+.fl .hr{font-variant-numeric:tabular-nums;color:var(--t2)}
