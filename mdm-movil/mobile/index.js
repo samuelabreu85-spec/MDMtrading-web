@@ -31,11 +31,12 @@ const PHONE_CMDS = new Set(['flatten', 'cancelOrders', 'shield', 'manualLock', '
 const PUSH_KINDS = {
   lock: 'Cuenta bloqueada', unlock: 'Cuenta desbloqueada', closeFail: 'Revisa la posición',
   blind: 'Escudo sin datos', blocked: 'Orden cancelada', copyWarn: 'Copiador',
-  entry: 'Entrada', exit: 'Cierre'
+  entry: 'Entrada', exit: 'Cierre', div: 'Divergencia'
 };
-// Qué tipo de aviso pide cada móvil: e = entradas, x = cierres (TP/BE/SL), r = escudos y copiador.
+// Qué tipo de aviso pide cada móvil: e = entradas, x = cierres (TP/BE/SL), r = escudos y copiador,
+// d = divergencias (indicador MDMdivergence). Las divergencias hay que activarlas en la app (no van por defecto).
 // «Revisa la posición» (closeFail) llega siempre: es un fallo que hay que mirar.
-const PREF_OF = { entry: 'e', exit: 'x', lock: 'r', unlock: 'r', blind: 'r', blocked: 'r', copyWarn: 'r', closeFail: null };
+const PREF_OF = { entry: 'e', exit: 'x', lock: 'r', unlock: 'r', blind: 'r', blocked: 'r', copyWarn: 'r', div: 'd', closeFail: null };
 const DEFAULT_PREFS = 'e,x';
 const cleanPrefs = p => (typeof p === 'string' && /^[a-z,]{0,20}$/.test(p)) ? p : DEFAULT_PREFS;
 const wants = (sub, kind) => { const k = PREF_OF[kind]; return k === null || cleanPrefs(sub.prefs).split(',').includes(k); };
@@ -208,7 +209,7 @@ module.exports = function attach(app, server, opts) {
         if (m.t === 'event') {
           toPhones(c, m);
           if (pushOn && PUSH_KINDS[m.kind] && c.subs.size) {
-            const trade = m.kind === 'entry' || m.kind === 'exit';
+            const trade = m.kind === 'entry' || m.kind === 'exit' || m.kind === 'div';   // cada uno su propia notificación
             const payload = JSON.stringify({ title: m.title ? String(m.title).slice(0, 80) : 'MDM · ' + PUSH_KINDS[m.kind], body: String(m.msg || '').slice(0, 240),
               tag: trade ? 'mdm-t-' + Date.now() : 'mdm-' + m.kind + '-' + (m.account || '') });
             c.subs.forEach((s, ep) => {
