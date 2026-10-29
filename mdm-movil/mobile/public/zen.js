@@ -12,7 +12,7 @@
     { k: '25k',  acc: '25K',  sym: 'CL', inst: 'Petróleo', tp: 125, goal: 1500, speed: 180, minSpeed: 105, slEvery: 3, maxSL: 8,  th: 'oil'  },
     { k: '50k',  acc: '50K',  sym: 'GC', inst: 'Oro',      tp: 250, goal: 3000, speed: 165, minSpeed: 95,  slEvery: 2, maxSL: 10, th: 'gold' },
     { k: '100k', acc: '100K', sym: 'ES', inst: 'S&P 500',  tp: 500, goal: 6000, speed: 150, minSpeed: 85,  slEvery: 2, maxSL: 12, th: 'es'   },
-    { k: '200k', acc: '200K', sym: 'NQ', inst: 'Nasdaq',   tp: 750, goal: 9000, speed: 135, minSpeed: 75,  slEvery: 1, maxSL: 14, th: 'nq'   }
+    { k: '200k', acc: '200K', sym: 'NQ', inst: 'Nasdaq',   tp: 750, goal: 9000, speed: 140, minSpeed: 88,  slEvery: 2, maxSL: 11, th: 'nq'   }
   ];
   // Colores de cada escenario: fondo, puntos de la rejilla, cuerpo de la serpiente (cola → cuello) y brillo
   const THEMES = {
@@ -326,51 +326,103 @@
     }
   }
 
-  // CL · petróleo brotando del suelo a lo bestia: dos pozos, erupciones periódicas y charco que crece
+  // CL · balancines de petróleo bombeando; de repente uno revienta y sale un chorro de dibujos animados
   function sceneOil(A, now, dt) {
-    const wells = [px * .27, px * .74], ground = px * .97, G = cell * 16;
-    if (!A.burst || now > A.burst + 3200) A.burst = now + 1400 + rng() * 900;      // próxima erupción
-    const erupt = now > A.burst && now < A.burst + 900;
-    wells.forEach((wx, wi) => {
-      const n = erupt ? 14 : 3;
-      for (let k = 0; k < n && A.list.length < 700; k++) {
-        const pw = erupt ? 1.55 : 1;
-        A.list.push({ x: wx + (rng() - .5) * cell * .4, y: ground, vx: (rng() - .5) * cell * (erupt ? 5.5 : 2.4), vy: -cell * (9 + rng() * 7) * pw * (wi ? .92 : 1),
-          r: cell * (.09 + rng() * .16) });
-      }
-      // chorro principal: columna de crudo que sube del pozo
-      const jh = erupt ? px * .78 : px * .32 + Math.sin(now / 180 + wi) * cell * .4, jw = cell * (erupt ? .55 : .32);
-      const jg = ctx.createLinearGradient(0, ground - jh, 0, ground);
-      jg.addColorStop(0, 'rgba(40,26,10,0)'); jg.addColorStop(.25, 'rgba(40,26,10,.75)'); jg.addColorStop(1, 'rgba(18,12,6,.95)');
-      ctx.globalAlpha = 1; ctx.fillStyle = jg;
-      ctx.beginPath(); ctx.moveTo(wx - jw * .5, ground);
-      for (let y = 0; y <= 1; y += .1) ctx.lineTo(wx - jw * (.5 + y * .6) + Math.sin(now / 90 + y * 9) * cell * .08, ground - jh * y);
-      for (let y = 1; y >= 0; y -= .1) ctx.lineTo(wx + jw * (.5 + y * .6) + Math.sin(now / 110 + y * 7) * cell * .08, ground - jh * y);
-      ctx.closePath(); ctx.fill();
+    const ground = px * .965, wells = [px * .2, px * .52, px * .82];
+    if (!A.gush) A.gush = { w: -1, t: 0, next: now + 2500 + rng() * 2500 };
+    const G = A.gush;
+    if (G.w < 0 && now > G.next) { G.w = Math.floor(rng() * wells.length); G.t = now + 450; }   // 0,45 s de temblor y revienta
+    const shakeW = G.w >= 0 && now < G.t ? (rng() - .5) * cell * .12 : 0;
+    const gAge = G.w >= 0 ? (now - G.t) / 1000 : -1, DUR = 2.2;
+    if (gAge > DUR + .6) { G.w = -1; G.next = now + 3500 + rng() * 3500; }
+
+    // cielo de atardecer (el crudo negro tiene que destacar) y sol bajo
+    const sky = ctx.createLinearGradient(0, 0, 0, ground);
+    sky.addColorStop(0, '#140b06'); sky.addColorStop(.55, '#4a2a10'); sky.addColorStop(1, '#a8561a');
+    ctx.globalAlpha = 1; ctx.fillStyle = sky; ctx.fillRect(-cell, -cell, px + 2 * cell, ground + cell);
+    const sun = ctx.createRadialGradient(px * .5, ground, 0, px * .5, ground, px * .45);
+    sun.addColorStop(0, 'rgba(253,186,116,.55)'); sun.addColorStop(1, 'rgba(253,186,116,0)');
+    ctx.fillStyle = sun; ctx.fillRect(0, 0, px, ground);
+    // suelo y charco
+    A.pool = Math.max(0, Math.min(cell * 1.1, (A.pool || 0) + (gAge > 0 && gAge < DUR ? dt * cell * .5 : -dt * cell * .05)));
+    ctx.globalAlpha = 1; ctx.fillStyle = '#0b0805';
+    ctx.fillRect(-cell, ground, px + 2 * cell, px - ground + cell);
+    if (A.pool > 1) {
+      const pxw = G.w >= 0 ? wells[G.w] : (A.lastW || px / 2);
+      ctx.fillStyle = '#050302'; ctx.beginPath(); ctx.ellipse(pxw, ground + cell * .05, A.pool * 2.6, A.pool * .35, 0, 0, Math.PI * 2); ctx.fill();
       ctx.strokeStyle = 'rgba(251,191,36,.35)'; ctx.lineWidth = 1; ctx.stroke();
-      // torre del pozo
-      ctx.globalAlpha = .28; ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = Math.max(1, cell * .07);
-      const h = cell * 1.9, w = cell * .7;
-      ctx.beginPath(); ctx.moveTo(wx - w, ground); ctx.lineTo(wx, ground - h); ctx.lineTo(wx + w, ground);
-      for (let j = 1; j < 4; j++) { const y = ground - h * j / 4, ww = w * (1 - j / 4); ctx.moveTo(wx - ww, y); ctx.lineTo(wx + ww, y); }
-      ctx.stroke();
+    }
+    ctx.strokeStyle = 'rgba(245,158,11,.35)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(0, ground); ctx.lineTo(px, ground); ctx.stroke();
+
+    // balancines (pumpjacks)
+    wells.forEach((wx, i) => {
+      const s = cell * (i === 1 ? 1.05 : .9), ph = now / (900 + i * 130) + i * 2.1, ang = Math.sin(ph) * .32;
+      const jx = wx + (i === G.w ? shakeW : 0);
+      ctx.save(); ctx.translate(jx, ground);
+      ctx.globalAlpha = .92; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+      ctx.strokeStyle = '#0b0703'; ctx.fillStyle = '#0b0703'; ctx.lineWidth = Math.max(2, s * .13);
+      ctx.beginPath(); ctx.moveTo(-s * 1.1, 0); ctx.lineTo(s * 1.5, 0); ctx.stroke();                                   // base
+      ctx.beginPath(); ctx.moveTo(-s * .35, 0); ctx.lineTo(0, -s * 1.5); ctx.lineTo(s * .35, 0); ctx.stroke();           // poste
+      const cr = s * .32, ca = ph * 2, cx2 = s * 1.05, cy2 = -s * .45;                                                  // manivela
+      ctx.beginPath(); ctx.arc(cx2, cy2, cr, 0, Math.PI * 2); ctx.stroke();
+      const kx = cx2 + Math.cos(ca) * cr, ky = cy2 + Math.sin(ca) * cr;
+      ctx.save(); ctx.translate(0, -s * 1.5); ctx.rotate(ang);
+      ctx.beginPath(); ctx.moveTo(-s * 1.25, 0); ctx.lineTo(s * 1.05, 0); ctx.stroke();                                // balancín
+      ctx.beginPath(); ctx.moveTo(-s * 1.25, -s * .32); ctx.quadraticCurveTo(-s * 1.65, 0, -s * 1.25, s * .42); ctx.lineTo(-s * 1.12, 0); ctx.closePath(); ctx.fill(); ctx.stroke();   // cabeza de caballo
+      ctx.restore();
+      const ex = Math.cos(ang) * s * 1.05, ey = -s * 1.5 + Math.sin(ang) * s * 1.05;
+      ctx.beginPath(); ctx.moveTo(ex, ey); ctx.lineTo(kx, ky); ctx.stroke();                                         // biela
+      const hx = -Math.cos(ang) * s * 1.38, hy = -s * 1.5 - Math.sin(ang) * s * 1.38;                                  // cable a la cabeza del pozo
+      ctx.beginPath(); ctx.moveTo(hx, hy + s * .4); ctx.lineTo(-s * 1.38, -s * .1); ctx.stroke();
+      ctx.fillRect(-s * 1.55, -s * .18, s * .34, s * .18);                                                             // boca del pozo
+      ctx.restore();
     });
-    A.pool = Math.min(px * .11, (A.pool || 0) + dt * cell * .05);
-    A.list = A.list.filter(d => {
-      d.vy += G * dt; d.x += d.vx * dt; d.y += d.vy * dt;
-      if (d.y > ground) { A.pool = Math.min(px * .11, A.pool + .002 * cell); return false; }
-      ctx.globalAlpha = .9; ctx.fillStyle = '#20160a'; ctx.strokeStyle = 'rgba(245,158,11,.55)'; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.arc(d.x, d.y, d.r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-      ctx.globalAlpha = .7; ctx.fillStyle = '#fcd34d'; ctx.beginPath(); ctx.arc(d.x - d.r * .35, d.y - d.r * .35, d.r * .3, 0, Math.PI * 2); ctx.fill();
+
+    // chorro de dibujos animados
+    if (G.w >= 0 && gAge > 0) {
+      A.lastW = wells[G.w];
+      const bx = wells[G.w] - cell * (G.w === 1 ? 1.05 : .9) * 1.38;   // sale de la boca del pozo
+      const up = gAge < DUR ? 1 - Math.pow(1 - Math.min(1, gAge / .35), 3) : Math.max(0, 1 - (gAge - DUR) / .6);
+      const H = px * .82 * up, top = ground - H, w0 = cell * .7, w1 = cell * 1.1;
+      if (H > 4) {
+        const jg = ctx.createLinearGradient(bx - w1, 0, bx + w1, 0);
+        jg.addColorStop(0, '#050302'); jg.addColorStop(.5, '#120c06'); jg.addColorStop(.72, '#2e1f0d'); jg.addColorStop(1, '#050302');
+        ctx.globalAlpha = .96; ctx.fillStyle = jg;
+        ctx.beginPath(); ctx.moveTo(bx - w0, ground);
+        for (let k = 0; k <= 12; k++) { const y = ground - H * k / 12, ww = w0 + (w1 - w0) * k / 12; ctx.lineTo(bx - ww + Math.sin(now / 70 + k * 1.3) * cell * .1, y); }
+        for (let k = 12; k >= 0; k--) { const y = ground - H * k / 12, ww = w0 + (w1 - w0) * k / 12; ctx.lineTo(bx + ww + Math.sin(now / 80 + k * 1.7) * cell * .1, y); }
+        ctx.closePath(); ctx.fill();
+        ctx.strokeStyle = '#020100'; ctx.lineWidth = Math.max(2, cell * .1); ctx.stroke();                              // trazo de cómic
+        ctx.strokeStyle = 'rgba(255,247,220,.75)'; ctx.lineWidth = Math.max(2, cell * .1);                              // brillo de cómic
+        ctx.beginPath(); ctx.moveTo(bx + w0 * .35, ground - cell * .3); ctx.lineTo(bx + w1 * .4, top + cell * .6); ctx.stroke();
+        // corona de salpicadura arriba
+        for (let k = 0; k < 7; k++) {
+          const an = Math.PI + (k / 6) * Math.PI, rr = cell * (.75 + .25 * Math.sin(now / 120 + k));
+          const cx3 = bx + Math.cos(an) * cell * 1.2, cy3 = top + Math.sin(an) * cell * .6 + cell * .2;
+          ctx.fillStyle = '#120c06'; ctx.beginPath(); ctx.arc(cx3, cy3, rr * up, 0, Math.PI * 2); ctx.fill();
+          ctx.strokeStyle = '#020100'; ctx.lineWidth = Math.max(2, cell * .08); ctx.stroke();
+          ctx.fillStyle = 'rgba(255,247,220,.7)'; ctx.beginPath(); ctx.arc(cx3 - rr * .3, cy3 - rr * .35, rr * .22 * up, 0, Math.PI * 2); ctx.fill();
+        }
+        // goterones de dibujos animados que salen despedidos de la corona
+        if (gAge < DUR && (!A.dropT || now - A.dropT > 120)) {
+          A.dropT = now;
+          A.extra.push({ x: bx + (rng() - .5) * cell, y: top + cell * .3, vx: (rng() < .5 ? -1 : 1) * cell * (2 + rng() * 3), vy: -cell * (2 + rng() * 3), r: cell * (.28 + rng() * .2) });
+        }
+      }
+      // sacudida de pantalla en el momento de reventar
+      if (gAge < .25) { const k = 1 - gAge / .25; ctx.globalAlpha = .18 * k; ctx.fillStyle = '#f59e0b'; ctx.fillRect(0, 0, px, px); }
+    }
+    A.extra = A.extra.filter(d => {
+      d.vy += cell * 14 * dt; d.x += d.vx * dt; d.y += d.vy * dt;
+      if (d.y > ground) { A.pool = Math.min(cell * 1.1, (A.pool || 0) + cell * .02); return false; }
+      const an = Math.atan2(d.vy, d.vx) - Math.PI / 2;                       // gota en forma de lágrima, orientada a su movimiento
+      ctx.save(); ctx.translate(d.x, d.y); ctx.rotate(an); ctx.globalAlpha = .95;
+      ctx.fillStyle = '#120c06'; ctx.strokeStyle = '#020100'; ctx.lineWidth = Math.max(1.5, cell * .07);
+      ctx.beginPath(); ctx.moveTo(0, -d.r * 2); ctx.quadraticCurveTo(d.r, -d.r * .2, 0, d.r); ctx.quadraticCurveTo(-d.r, -d.r * .2, 0, -d.r * 2); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = 'rgba(255,247,220,.75)'; ctx.beginPath(); ctx.arc(-d.r * .3, -d.r * .1, d.r * .22, 0, Math.PI * 2); ctx.fill();
+      ctx.restore();
       return true;
     });
-    // charco de crudo con brillo
-    ctx.globalAlpha = .9; ctx.fillStyle = '#080604';
-    ctx.beginPath(); ctx.moveTo(-cell, px + cell);
-    for (let x = -cell; x <= px + cell; x += cell / 2) ctx.lineTo(x, px - A.pool + Math.sin(x / (cell * 1.5) + now / 500) * cell * .12);
-    ctx.lineTo(px + cell, px + cell); ctx.closePath(); ctx.fill();
-    ctx.globalAlpha = .55; ctx.strokeStyle = '#f59e0b'; ctx.lineWidth = 1.5; ctx.stroke();
-    if (erupt) { ctx.globalAlpha = .12 * (1 - (now - A.burst) / 900); ctx.fillStyle = '#f59e0b'; ctx.fillRect(0, 0, px, px); }
   }
 
   // GC · lingotes que caen y se apilan; al llenarse la pila, destello y vuelta a empezar
@@ -454,52 +506,71 @@
     });
   }
 
-  // NQ · sol neón con "NQ" que atrae velas en espiral, sobre rejilla en perspectiva
+  // NQ · gráfica infinita con tramos alcistas y bajistas que avanza hasta el sol neón de NQ
   function sceneNQ(A, now, dt) {
-    const hz = px * .5, sp = (now / 900) % 1, sx = px / 2, sy = px * .32, sr = px * .17;
-    ctx.strokeStyle = 'rgba(217,70,239,.3)'; ctx.lineWidth = 1;
-    for (let i = 0; i < 10; i++) { const k = (i + sp) / 10, y = hz + (px - hz) * k * k; ctx.globalAlpha = .2 + .6 * k; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(px, y); ctx.stroke(); }
-    ctx.strokeStyle = 'rgba(34,211,238,.28)'; ctx.globalAlpha = .7;
-    for (let i = -8; i <= 8; i++) { ctx.beginPath(); ctx.moveTo(sx + i * cell * .25, hz); ctx.lineTo(sx + i * px * .16, px); ctx.stroke(); }
-    // velas atraídas por el sol
-    if (A.list.length < 26 && now > A.next) {
-      A.next = now + 90;
-      const a = rng() * Math.PI * 2, d = px * (.55 + rng() * .25);
-      A.list.push({ a, d, w: (rng() < .5 ? 1 : -1) * (.6 + rng() * .8), up: rng() < .55, h: cell * (.4 + rng() * .5) });
+    const hz = px * .62, sp = (now / 900) % 1, sx = px * .74, sy = px * .44, sr = px * .14;
+    ctx.strokeStyle = 'rgba(217,70,239,.25)'; ctx.lineWidth = 1;
+    for (let i = 0; i < 10; i++) { const k = (i + sp) / 10, y = hz + (px - hz) * k * k; ctx.globalAlpha = .15 + .5 * k; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(px, y); ctx.stroke(); }
+    ctx.strokeStyle = 'rgba(34,211,238,.22)'; ctx.globalAlpha = .6;
+    for (let i = -8; i <= 8; i++) { ctx.beginPath(); ctx.moveTo(px / 2 + i * cell * .25, hz); ctx.lineTo(px / 2 + i * px * .16, px); ctx.stroke(); }
+
+    // gráfica: cada vela nace en el sol y se desplaza a la izquierda; la tendencia cambia por tramos
+    const w = cell * .5, speedX = cell * 1.1;
+    if (!A.c) { A.c = []; A.v = 0; A.trend = 1; A.left = 18; A.off = 0; }
+    const push = () => {
+      if (--A.left <= 0) { A.trend = -A.trend; A.left = 10 + Math.floor(rng() * 16); }        // nuevo tramo
+      const o = A.v, drift = A.trend * (.035 + rng() * .03) - A.v * .05;                      // vuelve al centro para no salirse
+      A.v = o + drift + (rng() - .5) * .07;
+      A.pl = A.c.length ? A.c[A.c.length - 1].c : A.v;
+      A.c.push({ o, c: A.v, hi: Math.max(o, A.v) + rng() * .04, lo: Math.min(o, A.v) - rng() * .04 });
+      if (A.c.length > 80) A.c.shift();
+    };
+    while (A.c.length < Math.ceil(sx / w) + 4) push();
+    A.off += speedX * dt;
+    while (A.off >= w) { A.off -= w; push(); }
+    const cur = A.c[A.c.length - 1].c, last = (A.pl ?? cur) + (cur - (A.pl ?? cur)) * (A.off / w);   // suavizado: sin saltos al nacer cada vela
+    let span = .05; A.c.forEach(c => { span = Math.max(span, Math.abs(c.hi - last), Math.abs(c.lo - last)); });
+    A.k = A.k ? A.k + ((px * .36 / span) - A.k) * Math.min(1, dt * 2) : px * .36 / span;     // escala automática: la gráfica siempre a la vista
+    const k = Math.min(px * .9, A.k);
+    const Y = v => sy + (last - v) * k;                                                       // la última vela entra en el sol
+    const n = A.c.length;
+    ctx.globalAlpha = .7; ctx.strokeStyle = 'rgba(34,211,238,.6)'; ctx.lineWidth = Math.max(1.5, cell * .07);
+    ctx.shadowColor = 'rgba(34,211,238,.8)'; ctx.shadowBlur = cell * .4;
+    ctx.beginPath();
+    for (let i = 0; i < n; i++) { const x = sx - (n - 1 - i) * w - A.off, y = Y(A.c[i].c); i ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+    ctx.stroke(); ctx.shadowBlur = 0;
+    for (let i = 0; i < n; i++) {
+      const c = A.c[i], x = sx - (n - 1 - i) * w - A.off;
+      if (x < -w || x > sx - sr * .4) continue;
+      const up = c.c >= c.o, col = up ? '#34d399' : '#f472b6', fade = Math.min(1, x / (px * .25));
+      ctx.globalAlpha = .45 * Math.max(.3, fade); ctx.strokeStyle = ctx.fillStyle = col; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x, Y(c.hi)); ctx.lineTo(x, Y(c.lo)); ctx.stroke();
+      const y0 = Y(Math.max(c.o, c.c)), h = Math.max(2, Math.abs(Y(c.o) - Y(c.c)));
+      ctx.fillRect(x - w * .3, y0, w * .6, h);
     }
-    A.list = A.list.filter(c => {
-      c.d -= (cell * 1.2 + (px * .6 - c.d) * .9) * dt;              // acelera al acercarse
-      c.a += c.w * dt * (1 + (px * .6 - c.d) / px * 3);              // gira en espiral
-      if (c.d < sr * .55) return false;
-      const x = sx + Math.cos(c.a) * c.d, y = sy + Math.sin(c.a) * c.d, s = Math.min(1, (c.d - sr * .55) / (sr * 1.5));
-      const col = c.up ? '#34d399' : '#f472b6';
-      ctx.globalAlpha = .55 * s + .1; ctx.strokeStyle = ctx.fillStyle = col; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(x, y - c.h * s * .8); ctx.lineTo(x, y + c.h * s * .8); ctx.stroke();
-      ctx.fillRect(x - cell * .12 * s, y - c.h * s * .45, cell * .24 * s, c.h * s * .9);
-      return true;
-    });
-    // sol neón original: núcleo hexagonal con "NQ", anillo de facetas de cristal girando y halo que late
+
+    // sol neón original: núcleo hexagonal con "NQ", facetas de cristal girando y halo que late
     const pulse = .5 + .5 * Math.sin(now / 600), rot = now / 2600;
-    ctx.globalAlpha = .35 + .15 * pulse;
+    ctx.globalAlpha = .3 + .15 * pulse;
     const halo = ctx.createRadialGradient(sx, sy, sr * .6, sx, sy, sr * 2.1);
     halo.addColorStop(0, 'rgba(34,211,238,.45)'); halo.addColorStop(1, 'rgba(34,211,238,0)');
     ctx.fillStyle = halo; ctx.beginPath(); ctx.arc(sx, sy, sr * 2.1, 0, Math.PI * 2); ctx.fill();
-    ctx.globalAlpha = 1; ctx.shadowColor = 'rgba(217,70,239,.85)'; ctx.shadowBlur = cell * (1 + pulse);
+    ctx.globalAlpha = .85; ctx.shadowColor = 'rgba(217,70,239,.85)'; ctx.shadowBlur = cell * (1 + pulse);
     const sg = ctx.createLinearGradient(sx - sr, sy - sr, sx + sr, sy + sr);
     sg.addColorStop(0, 'rgba(34,211,238,.75)'); sg.addColorStop(.5, 'rgba(147,51,234,.7)'); sg.addColorStop(1, 'rgba(236,72,153,.7)');
     ctx.fillStyle = sg; ctx.beginPath();
     for (let i = 0; i < 6; i++) { const an = rot * .5 + i * Math.PI / 3; ctx.lineTo(sx + Math.cos(an) * sr, sy + Math.sin(an) * sr); }
     ctx.closePath(); ctx.fill();
     ctx.shadowBlur = 0; ctx.strokeStyle = 'rgba(240,253,255,.7)'; ctx.lineWidth = Math.max(1.5, cell * .08); ctx.stroke();
-    for (let i = 0; i < 8; i++) {                                           // facetas orbitando
+    for (let i = 0; i < 8; i++) {
       const an = rot + i * Math.PI / 4, r = sr * (1.32 + .06 * Math.sin(now / 400 + i)), fx = sx + Math.cos(an) * r, fy = sy + Math.sin(an) * r, fs = sr * .2;
       ctx.save(); ctx.translate(fx, fy); ctx.rotate(an + Math.PI / 2);
-      ctx.globalAlpha = .55 + .3 * Math.sin(now / 300 + i);
+      ctx.globalAlpha = .45 + .3 * Math.sin(now / 300 + i);
       ctx.fillStyle = i % 2 ? 'rgba(34,211,238,.55)' : 'rgba(217,70,239,.55)'; ctx.strokeStyle = 'rgba(240,253,255,.8)'; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(0, -fs); ctx.lineTo(fs * .55, 0); ctx.lineTo(0, fs); ctx.lineTo(-fs * .55, 0); ctx.closePath(); ctx.fill(); ctx.stroke();
       ctx.restore();
     }
-    ctx.globalAlpha = .95; ctx.fillStyle = '#fff'; ctx.shadowColor = '#22d3ee'; ctx.shadowBlur = cell * .7;
+    ctx.globalAlpha = .9; ctx.fillStyle = '#fff'; ctx.shadowColor = '#22d3ee'; ctx.shadowBlur = cell * .7;
     ctx.font = '900 ' + (sr * .66).toFixed(1) + "px 'Cinzel',serif"; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
     ctx.fillText('NQ', sx, sy + sr * .04);
     ctx.shadowBlur = 0;
