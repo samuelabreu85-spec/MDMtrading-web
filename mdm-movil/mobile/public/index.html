@@ -17,7 +17,10 @@
 <body>
   <header class="top">
     <div class="brand"><img src="img/icon-192.png" alt=""><div><b>MDM</b><small>Centro de control</small></div></div>
-    <span id="conn" class="pill"><i></i><span>Conectando…</span></span>
+    <div class="top-r">
+      <button class="zen-btn" id="zenBtn" aria-label="Antiestrés"><svg viewBox="0 0 24 24"><path d="M4 14c2 0 2-4 4-4s2 4 4 4 2-4 4-4 2 4 4 4"/><circle cx="19" cy="7" r="1.2"/></svg><span>Antiestrés</span></button>
+      <span id="conn" class="pill"><i></i><span>Conectando…</span></span>
+    </div>
   </header>
   <div id="mkt" class="mkt"></div>
 
@@ -35,5 +38,6 @@
   <div id="toasts" class="toasts"></div>
 
   <script src="app.js"></script>
+  <script src="zen.js"></script>
 </body>
 </html>
