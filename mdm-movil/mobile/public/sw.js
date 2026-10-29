@@ -1,6 +1,6 @@
 /* MDM móvil · service worker: app instalable, arranque sin red y avisos push */
-const CACHE = 'mdm-m-v11';
-const SHELL = ['./', 'index.html', 'app.js', 'app.css', 'manifest.webmanifest',
+const CACHE = 'mdm-m-v12';
+const SHELL = ['./', 'index.html', 'app.js', 'zen.js', 'app.css', 'manifest.webmanifest',
   'img/icon-192.png', 'img/icon-512.png', 'img/badge-96.png',
   'fonts/cinzel-latin-700-normal.woff2', 'fonts/cinzel-latin-900-normal.woff2',
   'fonts/dm-sans-latin-400-normal.woff2', 'fonts/dm-sans-latin-500-normal.woff2', 'fonts/dm-sans-latin-700-normal.woff2'];
