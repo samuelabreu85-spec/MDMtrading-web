@@ -24,13 +24,25 @@
 
   const CSS = `
 /* botón Antiestrés (cabecera) */
-.zen-btn{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;border-radius:99px;border:1px solid var(--gold3);
-  background:linear-gradient(180deg,rgba(212,175,55,.16),rgba(212,175,55,.05));color:var(--gold2);font:700 12px/1 'DM Sans',sans-serif;cursor:pointer}
-.zen-btn svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.zen-btn{position:relative;width:40px;height:40px;padding:0;border:0;border-radius:50%;background:none;cursor:pointer;display:inline-grid;place-items:center;-webkit-tap-highlight-color:transparent}
+.zen-orb{position:relative;width:38px;height:38px;border-radius:50%;display:grid;place-items:center;
+  background:radial-gradient(circle at 32% 26%,rgba(255,244,205,.55) 0,rgba(243,217,139,.18) 18%,transparent 34%),
+             radial-gradient(circle at 50% 60%,#2a1f0b 0,#120d05 62%,#070502 100%);
+  box-shadow:inset 0 0 0 1px rgba(243,217,139,.55),inset 0 -6px 10px rgba(212,175,55,.22),0 0 12px rgba(212,175,55,.35);
+  animation:zenLatido 1.4s ease-in-out infinite}
+.zen-orb::after{content:'';position:absolute;inset:-3px;border-radius:50%;border:1.5px solid rgba(212,175,55,.7);animation:zenOnda 1.4s ease-out infinite;pointer-events:none}
+.zen-orb svg{width:25px;height:17px;filter:drop-shadow(0 0 3px rgba(243,217,139,.6))}
+.zen-orb .pad{fill:#f3d98b;stroke:#a8842a;stroke-width:1}
+.zen-orb .ln{fill:none;stroke:#1a1307;stroke-width:2.2;stroke-linecap:round}
+.zen-orb .fb{fill:#1a1307}
+.zen-orb .st{fill:#1a1307;stroke:#d4af37;stroke-width:1}
+.zen-btn:active .zen-orb{transform:scale(.9)}
+@keyframes zenLatido{0%,100%{transform:scale(1)}14%{transform:scale(1.12)}28%{transform:scale(1)}42%{transform:scale(1.07)}70%{transform:scale(1)}}
+@keyframes zenOnda{0%{transform:scale(.95);opacity:.85}70%{transform:scale(1.45);opacity:0}100%{opacity:0}}
+@media (prefers-reduced-motion:reduce){.zen-orb,.zen-orb::after{animation:none}}
 .top-r{display:flex;align-items:center;gap:8px}
 .top-r .pill{white-space:nowrap}
 .brand small{white-space:nowrap}
-@media (max-width:430px){.zen-btn{width:34px;height:34px;padding:0;justify-content:center}.zen-btn span{display:none}.zen-btn svg{width:17px;height:17px}}
 /* pantalla del juego */
 .zen{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;gap:12px;
   padding:calc(14px + var(--safe-t)) 16px calc(18px + var(--safe-b));background:radial-gradient(120% 60% at 50% -10%,var(--zen-tint,rgba(212,175,55,.14)),transparent 60%),var(--bg);transition:background .4s}
