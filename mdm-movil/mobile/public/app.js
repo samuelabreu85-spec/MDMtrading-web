@@ -121,6 +121,21 @@
     if (EV_T[m.kind]) toast(m.msg || '', m.kind === 'unlock' ? 'ok' : 'err', EV_T[m.kind]);
   }
   const PREFS_LS = 'mdm.m.prefs';
+  // ── Abrir el gráfico del PC con AnyDesk ──────────────────────────
+  const AD_LS = 'mdm.m.anydesk';
+  function adId() { try { return (localStorage.getItem(AD_LS) || '').replace(/[^\w@.-]/g, ''); } catch (e) { return ''; } }
+  function openChart() {
+    const id = adId();
+    if (!id) { st.view = 'settings'; render(); window.scrollTo(0, 0); return toast('Pon el ID de AnyDesk de tu PC en Ajustes.', 'err'); }
+    if (/android/i.test(navigator.userAgent)) {
+      // 1º: AnyDesk conectando directamente al PC; si el móvil no lo admite, al menos se abre AnyDesk
+      location.href = 'intent:' + id + '#Intent;scheme=anydesk;package=com.anydesk.anydeskandroid;end';
+      setTimeout(() => { if (!document.hidden) location.href = 'intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=com.anydesk.anydeskandroid;end'; }, 1500);
+    } else {
+      location.href = 'anydesk:' + id;
+      setTimeout(() => { if (!document.hidden) toast('Abre AnyDesk y toca tu PC (' + id + ').', ''); }, 1800);
+    }
+  }
   function getPrefs() { let p = null; try { p = localStorage.getItem(PREFS_LS); } catch (e) {} return (p != null && /^[a-z,]*$/.test(p)) ? p.split(',').filter(Boolean) : ['e', 'x']; }
   function setPrefs(a) { try { localStorage.setItem(PREFS_LS, a.join(',')); } catch (e) {} }
 
@@ -343,7 +358,8 @@
     const npos = r.reduce((s, x) => s + x.positions.length, 0);
     const nlock = r.filter(x => x.shield && x.shield.locked).length;
     let h = '<div class="card hero"><div><div class="lbl">P&amp;L de hoy</div><div class="big mono ' + cls(day) + '">' + money(day, true) + '</div></div>' +
-      '<div class="side">' + r.length + ' cuentas<b>' + npos + ' pos.</b>' + (nlock ? '<span style="color:#fca5a5">🔒 ' + nlock + '</span>' : '') + '</div></div>';
+      '<div class="side">' + r.length + ' cuentas<b>' + npos + ' pos.</b>' + (nlock ? '<span style="color:#fca5a5">🔒 ' + nlock + '</span>' : '') + '</div></div>' +
+      '<button class="btn gold wide" data-chart style="margin:-2px 0 12px">📈 Abrir gráfico' + (adId() ? '' : ' (configúralo en Ajustes)') + '</button>';
     h += r.map(x => {
       const s = x.shield;
       let shd;
@@ -567,12 +583,18 @@
         ['d', 'Divergencias', 'Cuando MDMdivergence marca una divergencia nueva (DIV ▲ / DIV ▼) en tiempo real.']].map(([k, t, d]) =>
         '<div class="set"><div><b>' + t + '</b><small>' + d + '</small></div><label class="sw"><input type="checkbox" data-pref="' + k + '"' + (getPrefs().includes(k) ? ' checked' : '') + '><span></span></label></div>').join('') + '</div>' +
       '<div class="set" id="pushTestRow" hidden><div><b>Probar avisos</b><small>Bloquea el móvil después de pulsar: te llegará un aviso de prueba.</small></div><button class="btn" id="pushTest">Probar</button></div></div>' +
+      '<h2>Gráfico (AnyDesk)</h2><div class="card"><div class="set" style="flex-wrap:wrap"><div><b>ID de AnyDesk de tu PC</b><small>Lo ves en AnyDesk del PC («Este escritorio»). El botón «Abrir gráfico» abre AnyDesk conectado a él.</small></div>' +
+      '<input id="adId" inputmode="numeric" autocomplete="off" placeholder="123 456 789" value="' + esc(adId()) + '" style="flex:1 1 100%;margin-top:10px;padding:11px 12px;border-radius:10px;border:1px solid var(--line2);background:var(--card);color:var(--t1);font:600 16px inherit"></div>' +
+      '<div class="set"><div><b>Probar</b><small>Necesitas AnyDesk instalado en el móvil.</small></div><button class="btn" id="adTest">Abrir gráfico</button></div></div>' +
       '<h2>Vinculación</h2><div class="card"><div class="set"><div><b>PC vinculado</b><small>' + (pair && pair.pc ? esc(pair.pc) + ' · ' : '') +
       (st.core ? 'NinjaTrader conectado' : st.sock ? 'NinjaTrader sin conexión' : 'sin conexión') + '</small></div></div>' +
       '<div class="set"><div><b>Desvincular este móvil</b><small>Para volver a usarlo tendrás que escanear el QR otra vez.</small></div><button class="btn" id="unpair">Desvincular</button></div></div>' +
       '<p class="mut" style="text-align:center;font-size:12px;margin-top:18px">Las reglas de los escudos y la configuración del copiador se cambian desde el PC.</p>';
   }
   async function bindSettings() {
+    const ad = $('#adId');
+    if (ad) ad.onchange = ad.onblur = () => { try { localStorage.setItem(AD_LS, ad.value.replace(/[^\w@.-]/g, '')); } catch (e) {} };
+    const adt = $('#adTest'); if (adt) adt.onclick = () => { if (ad) { try { localStorage.setItem(AD_LS, ad.value.replace(/[^\w@.-]/g, '')); } catch (e) {} } openChart(); };
     const sw = $('#swPush'), txt = $('#pushTxt');
     if (isIOS && !standalone()) { txt.textContent = 'En iPhone, primero añade la app a la pantalla de inicio.'; }
     else {
@@ -717,6 +739,7 @@
   }
 
   $('#view').addEventListener('click', e => {
+    if (e.target.closest('[data-chart]')) return openChart();
     const pm = e.target.closest('[data-pm]');
     if (pm) { const d = new Date(pnl.y, pnl.m + Number(pm.dataset.pm), 1); pnl.y = d.getFullYear(); pnl.m = d.getMonth(); render(); loadPnl(true); return; }
     const ps = e.target.closest('[data-ps]');
