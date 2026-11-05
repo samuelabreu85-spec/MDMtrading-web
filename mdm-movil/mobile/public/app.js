@@ -118,6 +118,7 @@
       const t = String(m.title || ''); return toast(m.msg || '', /^SL/.test(t) ? 'err' : /^TP/.test(t) || m.kind === 'entry' ? 'ok' : '', t);
     }
     if (m.kind === 'div') { if (!getPrefs().includes('d')) return; return toast(m.msg || '', '', m.title || 'Divergencia'); }
+    if (m.kind === 'tend') { if (!getPrefs().includes('t')) return; return toast(m.msg || '', '', m.title || 'Tendencial'); }
     if (EV_T[m.kind]) toast(m.msg || '', m.kind === 'unlock' ? 'ok' : 'err', EV_T[m.kind]);
   }
   const PREFS_LS = 'mdm.m.prefs';
@@ -575,12 +576,13 @@
   function settingsView() {
     const inst = standalone() ? '' : '<div class="card"><div class="set"><div><b>Instalar en el móvil</b><small>' +
       (isIOS ? 'En Safari: botón Compartir → «Añadir a pantalla de inicio». Así funcionan también los avisos.' : 'En Chrome: menú ⋮ → «Añadir a pantalla de inicio» o «Instalar aplicación».') + '</small></div></div></div>';
-    return inst + '<h2>Avisos</h2><div class="card"><div class="set"><div><b>Avisos en el móvil</b><small id="pushTxt">Entradas, cierres (TP, BE o SL) y, si quieres, escudos, copiador y divergencias.</small></div>' +
+    return inst + '<h2>Avisos</h2><div class="card"><div class="set"><div><b>Avisos en el móvil</b><small id="pushTxt">Entradas, cierres (TP, BE o SL) y, si quieres, escudos, copiador, divergencias y cruces de MDMtendencial.</small></div>' +
       '<label class="sw"><input type="checkbox" id="swPush" disabled><span></span></label></div>' +
       '<div id="prefRows" hidden>' + [['e', 'Entradas', 'Cuando se abre una posición: compra o venta, contratos y precio.'],
         ['x', 'Cierres', 'TP, BE o SL con el resultado en $.'],
         ['r', 'Escudos y copiador', 'Cuenta bloqueada o desbloqueada y avisos del copiador.'],
-        ['d', 'Divergencias', 'Cuando MDMdivergence marca una divergencia nueva (DIV ▲ / DIV ▼) en tiempo real.']].map(([k, t, d]) =>
+        ['d', 'Divergencias', 'Cuando MDMdivergence marca una divergencia nueva (DIV ▲ / DIV ▼) en tiempo real.'],
+        ['t', 'Tendencial', 'Cuando en MDMtendencial la rápida cruza las dos medias (TEND ▲ / TEND ▼) en tiempo real.']].map(([k, t, d]) =>
         '<div class="set"><div><b>' + t + '</b><small>' + d + '</small></div><label class="sw"><input type="checkbox" data-pref="' + k + '"' + (getPrefs().includes(k) ? ' checked' : '') + '><span></span></label></div>').join('') + '</div>' +
       '<div class="set" id="pushTestRow" hidden><div><b>Probar avisos</b><small>Bloquea el móvil después de pulsar: te llegará un aviso de prueba.</small></div><button class="btn" id="pushTest">Probar</button></div></div>' +
       '<h2>Gráfico (AnyDesk)</h2><div class="card"><div class="set" style="flex-wrap:wrap"><div><b>ID de AnyDesk de tu PC</b><small>Lo ves en AnyDesk del PC («Este escritorio»). El botón «Abrir gráfico» abre AnyDesk conectado a él.</small></div>' +
