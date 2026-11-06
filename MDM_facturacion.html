@@ -578,6 +578,7 @@
   <label>Modalidad</label>
   <select id="serviceSelect">
     <option value="custom">— Personalizado —</option>
+    <option value="mentoriaMDM" data-price="1500" data-concept="Mentoría de Trading MDM — Pago único" data-items="Método y Estrategia MDM en vídeo|Mentoría privada en Discord: directo diario post-operativa (L-V), dudas diarias, corrección de operaciones y 1 a 1 mensual|18 indicadores MDM para NinjaTrader 8 (licencia de por vida, 1 máquina)|MDMBOT: motores Absorción y Fuerza, MDMbotPanel, MDMgexlevels, volume profile anclado y gestión de operación|MDM Centro de Control de Cuentas: escudos, copiador, calendario P&amp;L, journal, agenda USD y app móvil|MDM Botonera|Actualizaciones futuras incluidas">Mentoría de Trading MDM (1.500 € · pago único)</option>
     <option value="suite" data-price="500" data-concept="Suite de indicadores + Método MDM (NinjaTrader 8) — Licencia de por vida, pago único">Suite de indicadores + Método (500 € · pago único)</option>
     <option value="mentoria" data-price="79" data-concept="Mentoría privada en Discord — Acceso completo (mensual)">Mentoría privada Discord (79 €/mes)</option>
     <option value="bot" data-price="1000" data-concept="MDMBOT — Bot automático de footprint para NinjaTrader 8 — Licencia de por vida, pago único">MDMBOT (1.000 € · pago único)</option>
@@ -718,7 +719,7 @@
       </thead>
       <tbody>
         <tr>
-          <td id="p-concept">Servicio</td>
+          <td><div id="p-concept">Servicio</div><ul id="p-items" style="display:none;margin:8px 0 0 16px;padding:0;font-size:11px;line-height:1.55;color:#666"></ul></td>
           <td class="align-r" id="p-lineAmount">0,00 €</td>
         </tr>
       </tbody>
@@ -1099,6 +1100,10 @@ function render(){
   document.getElementById('p-clientNif').textContent = 'NIF: ' + (v('clientNif') || '—');
   document.getElementById('p-clientAddress').textContent = v('clientAddress') || '';
   document.getElementById('p-concept').textContent = v('concept') || 'Servicio';
+  const so = document.getElementById('serviceSelect'), it = so.options[so.selectedIndex].dataset.items || '';
+  const ul = document.getElementById('p-items');
+  ul.innerHTML = it ? it.split('|').map(x => '<li>' + x + '</li>').join('') : '';
+  ul.style.display = it ? 'block' : 'none';
 
   const amount = parseFloat(v('amount')) || 0;
   const ivaRate = parseFloat(v('ivaRate')) || 0;
