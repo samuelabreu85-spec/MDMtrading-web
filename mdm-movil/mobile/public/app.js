@@ -181,6 +181,28 @@
     return { l: 'Mercado cerrado', s: '', dot: '' };
   }
 
+  /* Aviso de festivo de EE. UU. bajo la línea de sesión: cerrado / media sesión (hasta 5 días antes) y
+     festivo federal con mercado abierto (Columbus, Veterans: solo el mismo día) */
+  function holidayInfo() {
+    const t = new Date(); t.setHours(0, 0, 0, 0); const y = t.getFullYear(), tIso = nyIso(t);
+    const wk = d => d.getDay() > 0 && d.getDay() < 6, vd = new Date(y, 10, 11);
+    const fed = [{ date: nyIso(nthDow(y, 9, 1, 2)), name: 'Columbus Day' }].concat(wk(vd) ? [{ date: nyIso(vd), name: 'Veterans Day' }] : []);
+    const DS = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+    const L = holidays(y).concat(holidays(y + 1)).filter(x => x.date >= tIso).sort((a, b) => a.date.localeCompare(b.date));
+    const h = L[0];
+    if (h) {
+      const dt = new Date(h.date + 'T00:00:00'), days = Math.round((dt - t) / 86400000);
+      if (days <= 5) {
+        const when = days === 0 ? 'hoy' : days === 1 ? 'mañana' : 'el ' + DS[dt.getDay()];
+        return h.early ? { k: 'early', ic: '🟠', t: 'Media sesión ' + when + ' · ' + h.name, s: 'El mercado cierra a las 19:00 (hora de Madrid)' }
+                       : { k: 'closed', ic: '🔴', t: 'Mercado cerrado ' + when + ' · ' + h.name, s: 'No hay sesión de Nueva York ese día' };
+      }
+    }
+    const f = fed.find(x => x.date === tIso);
+    if (f) return { k: 'fed', ic: '🇺🇸', t: 'Festivo en EE. UU. hoy · ' + f.name, s: 'Mercado abierto · bonos cerrados · menos volumen' };
+    return null;
+  }
+
   function header() {
     const c = $('#conn');
     if (!pair) { c.className = 'pill'; c.lastElementChild.textContent = 'Sin vincular'; }
@@ -189,6 +211,8 @@
     else { c.className = 'pill'; c.lastElementChild.textContent = 'Conectando…'; }
     const mk = market();
     $('#mkt').innerHTML = '<i class="' + mk.dot + '"></i><b>' + esc(mk.l) + '</b>' + (mk.s ? ' · ' + esc(mk.s) : '');
+    const hi = holidayInfo(), he = $('#hol');
+    if (he) { if (hi) { he.className = 'hol ' + hi.k; he.innerHTML = '<span class="ic">' + hi.ic + '</span><span><b>' + esc(hi.t) + '</b><small>' + esc(hi.s) + '</small></span>'; he.hidden = false; } else he.hidden = true; }
   }
 
   /* ── vistas ──────────────────────────────────────────────────── */
