@@ -1400,6 +1400,158 @@ button{ font:inherit; color:inherit; background:none; border:none; cursor:pointe
 .estado.bien{ border-color:#4C7F45; background:rgba(76,127,69,.10); color:#B4DDAC }
 .estado.mal{ border-color:#8E4636; background:rgba(142,70,54,.10); color:#EDB3A3 }
 
+
+/* ── Panel de edición a pantalla completa ─────────────── */
+.editor{ width:100%; left:0; border-left:none }
+.editor-cuerpo{ padding:22px clamp(18px, 3vw, 44px) 34px }
+
+.tarjetas-ed{
+  display:flex; gap:14px;
+  overflow-x:auto;
+  padding:4px 2px 16px;
+  margin-bottom:22px;
+  border-bottom:1px solid var(--borde);
+  scrollbar-width:thin;
+}
+.tarjeta-ed{
+  flex:1 0 130px; max-width:175px;
+  display:flex; flex-direction:column; align-items:stretch; gap:7px;
+  padding:9px 9px 11px;
+  border:1px solid var(--borde);
+  border-radius:4px;
+  background:var(--panel);
+  text-align:left;
+  transition:border-color .2s, box-shadow .2s, transform .2s;
+}
+.tarjeta-ed:hover{ border-color:var(--bronce); transform:translateY(-2px) }
+.tarjeta-ed img, .tarjeta-ed .sin-portada{
+  width:100%; aspect-ratio:1/1; object-fit:cover;
+  border-radius:2px; border:1px solid var(--borde-vivo); background:#16120D;
+}
+.tarjeta-ed .t-nom{
+  font-family:'Cormorant Garamond', Georgia, serif;
+  font-variant:small-caps; font-weight:500; font-size:17px; line-height:1.15;
+  letter-spacing:.05em; color:var(--oro-claro);
+}
+.tarjeta-ed .t-cuenta{ font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--apagado) }
+.tarjeta-ed.sel{
+  border-color:var(--oro);
+  background:rgba(212,175,55,.10);
+  box-shadow:0 0 0 1px var(--oro), 0 0 22px rgba(212,175,55,.22);
+}
+.tarjeta-ed.recurso .t-cuenta{ color:var(--bronce) }
+
+.mod-cab{
+  display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
+  margin-bottom:14px;
+}
+.mod-cab h3{
+  font-family:'Cormorant Garamond', Georgia, serif;
+  font-variant:small-caps; font-weight:500; font-size:28px;
+  letter-spacing:.06em; color:var(--oro-claro);
+}
+.mod-acciones{ display:flex; align-items:center; gap:8px; flex-wrap:wrap }
+.mod-acciones .boton{ white-space:nowrap }
+.mod-acciones .boton.leve{ color:var(--tenue) }
+.mod-acciones .boton.leve:hover{ color:var(--oro-claro) }
+
+.tabla-ed{
+  border:1px solid var(--borde);
+  border-radius:3px;
+  background:var(--panel);
+  overflow:hidden;
+}
+.fila-ed{
+  display:grid;
+  grid-template-columns:38px minmax(180px, 1.3fr) minmax(220px, 2fr) 100px 120px 30px 64px 104px;
+  align-items:center; gap:10px;
+  padding:7px 12px;
+  border-top:1px solid var(--borde);
+}
+.fila-ed:first-child{ border-top:none }
+.fila-ed.cabecera{
+  background:rgba(212,175,55,.06);
+  font-size:10px; font-weight:500; letter-spacing:.22em; text-transform:uppercase; color:var(--bronce);
+}
+.fila-ed:not(.cabecera):hover{ background:rgba(255,255,255,.02) }
+.fila-ed.dorada{ box-shadow:inset 3px 0 0 var(--oro) }
+.fila-ed .num{ font-size:12px; letter-spacing:.1em; color:var(--apagado) }
+.fila-ed input[type=text]{
+  width:100%; min-width:0;
+  padding:8px 9px;
+  background:#16120D;
+  border:1px solid var(--borde);
+  border-radius:2px;
+  color:var(--crema);
+  font:400 13.5px 'Jost', sans-serif;
+}
+.fila-ed input[type=text]:focus{ outline:none; border-color:var(--bronce); background:#1B160F }
+.fila-ed.falta .c-enl{ border-color:#8E4636 }
+.fila-ed .c-est{ width:16px; height:16px; accent-color:var(--oro); cursor:pointer; justify-self:center }
+.fila-ed .ops{ display:flex; justify-content:flex-end }
+.fila-ed .ops .quitar:hover{ color:#D97A56 }
+.vistas-ed{
+  justify-self:center;
+  min-width:46px; padding:6px 8px;
+  border:1px solid var(--borde-vivo);
+  border-radius:3px;
+  background:rgba(212,175,55,.07);
+  text-align:center;
+  font:500 13px 'Jost', sans-serif;
+  color:var(--oro-claro);
+  font-variant-numeric:tabular-nums;
+}
+.vacio-ed{ padding:22px; text-align:center; color:var(--apagado); font-size:13px }
+.add-abajo{ margin-top:12px }
+
+.plegable{
+  margin-top:22px;
+  border:1px solid var(--borde);
+  border-radius:3px;
+  background:var(--panel);
+}
+.plegable summary{
+  cursor:pointer; padding:13px 16px;
+  font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:var(--tenue);
+}
+.plegable summary:hover{ color:var(--oro-claro) }
+.plegable-cuerpo{ padding:4px 16px 16px }
+.plegable .publicar{ margin-top:0; border:none; padding:0; background:none }
+.boton.peligro{ margin-top:16px; border-color:#8E4636; color:#EDB3A3 }
+.boton.peligro:hover{ background:rgba(142,70,54,.15); border-color:#C0634C; color:#F5C9BC }
+
+#publicar.pendiente{
+  background:rgba(212,175,55,.30);
+  box-shadow:0 0 22px rgba(212,175,55,.35);
+}
+
+@media (max-width:900px){
+  .fila-ed.cabecera{ display:none }
+  .fila-ed{
+    grid-template-columns:30px 1fr 1fr auto;
+    grid-template-areas:
+      "n t t o"
+      ". e e e"
+      ". d f s"
+      ". v v v";
+    gap:7px 8px; padding:11px 10px;
+  }
+  .fila-ed .num{ grid-area:n }
+  .fila-ed .c-tit{ grid-area:t }
+  .fila-ed .c-enl{ grid-area:e }
+  .fila-ed .c-dur{ grid-area:d }
+  .fila-ed .c-fec{ grid-area:f }
+  .fila-ed .c-est{ grid-area:s }
+  .fila-ed .ops{ grid-area:o }
+  .fila-ed .vistas-ed{ grid-area:v; justify-self:start }
+  .fila-ed .vistas-ed::after{ content:' vistas'; font-size:10px; letter-spacing:.1em; color:var(--apagado); margin-left:4px }
+  .tarjeta-ed{ flex:0 0 112px }
+  .mod-cab{ gap:10px }
+  .mod-acciones{ width:100% }
+  .mod-acciones .descargar{ margin-left:auto; padding:10px 16px }
+  .mod-cab h3{ font-size:23px }
+}
+
 /* ── Pantallas cortas y móvil ─────────────────────────── */
 
 @media (max-height:760px) and (min-width:901px){
@@ -1863,6 +2015,7 @@ button{ font:inherit; color:inherit; background:none; border:none; cursor:pointe
     }
     abrir(activo);
     if (enModulo()) pintarModulo();
+    if (velo.classList.contains('visible')) marcarSucio(true);
   }
 
   /* ── Gestos y teclas ─────────────────────────────────── */
@@ -1974,219 +2127,343 @@ button{ font:inherit; color:inherit; background:none; border:none; cursor:pointe
 
   /* ── Panel de edición ────────────────────────────────── */
 
+  /* Pantalla completa: tarjetas de módulos arriba, y debajo todos los
+     enlaces del módulo elegido, editables en línea como una tabla. */
+
+  /* ── Contador de vistas ──────────────────────────────────
+     Cada clic de un alumno en un enlace suma 1 en un contador
+     público (Abacus). La clave sale del propio enlace, así que
+     reordenar o renombrar no pierde la cuenta. Tus clics no
+     cuentan: este navegador queda marcado al entrar con la clave. */
+  const CONTADOR = 'https://abacus.jasoncameron.dev';
+  const ESPACIO  = 'mdmtrading-clases';
+  const vistas   = {};
+
+  function claveEnlace(url){
+    url = String(url || '').trim();
+    if (!url) return '';
+    let h = 0x811c9dc5;
+    for (let i = 0; i < url.length; i++){
+      h ^= url.charCodeAt(i);
+      h = Math.imul(h, 0x01000193) >>> 0;
+    }
+    return 'e' + h.toString(16);
+  }
+
+  function esDueno(){
+    try { return localStorage.getItem('mdm_editor_ok') === CLAVE; } catch(e){ return false; }
+  }
+
+  function sumarVista(url){
+    const k = claveEnlace(url);
+    if (!k || esDueno()) return;
+    try {
+      fetch(CONTADOR + '/hit/' + ESPACIO + '/' + k, { keepalive:true, mode:'cors' })
+        .catch(function(){});
+    } catch(e){}
+  }
+
+  function leerVistas(url, caja){
+    const k = claveEnlace(url);
+    if (!k){ caja.textContent = '–'; return; }
+    if (k in vistas){ caja.textContent = vistas[k]; return; }
+    caja.textContent = '…';
+    fetch(CONTADOR + '/get/' + ESPACIO + '/' + k + '?t=' + Date.now(), { cache:'no-store' })
+      .then(function(r){ return r.status === 404 ? { value:0 } : r.json(); })
+      .then(function(d){ vistas[k] = Number(d.value) || 0; caja.textContent = vistas[k]; })
+      .catch(function(){ caja.textContent = '?'; caja.title = 'No se pudo leer el contador'; });
+  }
+
+  let modSel = -1;
+  let sucio = false;
+
+  function entrada(valor, ph, alCambiar, clase){
+    const i = document.createElement('input');
+    i.type = 'text';
+    i.value = valor || '';
+    i.placeholder = ph || '';
+    if (clase) i.className = clase;
+    i.addEventListener('input', function(){ alCambiar(i.value); });
+    return i;
+  }
+
   function campo(etiqueta, valor, alCambiar){
     const l = document.createElement('label');
     l.className = 'campo';
     l.innerHTML = '<span>' + limpiar(etiqueta) + '</span>';
-    const i = document.createElement('input');
-    i.type = 'text';
-    i.value = valor || '';
-    i.addEventListener('input', function(){ alCambiar(i.value); });
-    l.appendChild(i);
+    l.appendChild(entrada(valor, '', alCambiar));
     return l;
+  }
+
+  function botonLeve(texto, titulo, alPulsar, clase){
+    const b = document.createElement('button');
+    b.className = 'boton leve' + (clase ? ' ' + clase : '');
+    b.type = 'button';
+    b.textContent = texto;
+    if (titulo) b.title = titulo;
+    b.addEventListener('click', function(e){ e.stopPropagation(); alPulsar(); });
+    return b;
+  }
+
+  function mover(lista, i, d){
+    const j = i + d;
+    if (j < 0 || j >= lista.length) return false;
+    const t = lista[j]; lista[j] = lista[i]; lista[i] = t;
+    return true;
+  }
+
+  function refrescarEditor(){
+    const y = cuerpo.scrollTop;
+    pintarEditor();
+    cuerpo.scrollTop = y;
   }
 
   function pintarEditor(){
     cuerpo.innerHTML = '';
+    if (modSel < 0 || modSel >= CURSO.modulos.length)
+      modSel = Math.min(Math.max(activo, 0), CURSO.modulos.length - 1);
 
-    const aviso = document.createElement('p');
-    aviso.className = 'aviso-editor';
-    aviso.textContent = 'Los cambios se ven al momento pero no se guardan solos. ' +
-      'Cuando termines, pulsa Publicar en la web (abajo del todo) y quedan en línea ' +
-      'en un minuto. Si cierras sin publicar, se pierden.';
-    cuerpo.appendChild(aviso);
-
+    /* ── Fila de tarjetas ── */
+    const tira = document.createElement('div');
+    tira.className = 'tarjetas-ed';
     CURSO.modulos.forEach(function(mod, i){
-
-      const bloque = document.createElement('div');
-      bloque.className = 'bloque';
-
-      /* Cabecera del módulo */
-      const cab = document.createElement('div');
-      cab.className = 'bloque-cab';
-
-      const mini = document.createElement('img');
-      mini.src = mod.portada || '';
-      cab.appendChild(mini);
-
-      const tit = document.createElement('span');
-      tit.className = 'tit';
-      tit.textContent = mod.nombre;
-      cab.appendChild(tit);
-
-      if (esAparte(mod)){
-        const sello = document.createElement('span');
-        sello.className = 'etiqueta-aparte';
-        sello.textContent = 'Recurso';
-        cab.appendChild(sello);
-      }
-
-      const subir = document.createElement('button');
-      subir.className = 'boton leve';
-      subir.type = 'button';
-      subir.textContent = '↑';
-      subir.title = 'Subir';
-      subir.addEventListener('click', function(){
-        if (i === 0) return;
-        const t = CURSO.modulos[i - 1];
-        CURSO.modulos[i - 1] = CURSO.modulos[i];
-        CURSO.modulos[i] = t;
-        pintarEditor(); repintar();
+      const t = document.createElement('button');
+      t.type = 'button';
+      t.className = 'tarjeta-ed' + (i === modSel ? ' sel' : '') +
+                    (esAparte(mod) ? ' recurso' : '');
+      t.innerHTML =
+        (mod.portada ? '<img src="' + mod.portada + '" alt="">' : '<div class="sin-portada"></div>') +
+        '<span class="t-nom">' + limpiar(mod.nombre) + '</span>' +
+        '<span class="t-cuenta">' + mod.clases.length +
+        (esAparte(mod) ? ' archivos' : ' clases') + '</span>';
+      t.addEventListener('click', function(){
+        modSel = i; activo = i;
+        pintarEditor();
+        cuerpo.scrollTop = 0;
       });
-      cab.appendChild(subir);
-
-      const bajar = document.createElement('button');
-      bajar.className = 'boton leve';
-      bajar.type = 'button';
-      bajar.textContent = '↓';
-      bajar.title = 'Bajar';
-      bajar.addEventListener('click', function(){
-        if (i === CURSO.modulos.length - 1) return;
-        const t = CURSO.modulos[i + 1];
-        CURSO.modulos[i + 1] = CURSO.modulos[i];
-        CURSO.modulos[i] = t;
-        pintarEditor(); repintar();
-      });
-      cab.appendChild(bajar);
-
-      const borrarMod = document.createElement('button');
-      borrarMod.className = 'boton leve';
-      borrarMod.type = 'button';
-      borrarMod.textContent = 'Borrar';
-      borrarMod.addEventListener('click', function(){
-        if (!confirm('¿Borrar el módulo "' + mod.nombre + '" y todas sus clases?')) return;
-        CURSO.modulos.splice(i, 1);
-        activo = 0;
-        pintarEditor(); repintar();
-      });
-      cab.appendChild(borrarMod);
-
-      bloque.appendChild(cab);
-
-      /* Cuerpo del módulo */
-      const cu = document.createElement('div');
-      cu.className = 'bloque-cuerpo';
-
-      cu.appendChild(campo('Nombre del módulo', mod.nombre, function(v){
-        mod.nombre = v; tit.textContent = v; repintar();
-      }));
-      cu.appendChild(campo('Descripción', mod.resumen, function(v){
-        mod.resumen = v; repintar();
-      }));
-
-      /* Mismo bloque, dos sitios: lista de módulos o zona de Recursos */
-      const sw = document.createElement('label');
-      sw.className = 'interruptor';
-      const chk = document.createElement('input');
-      chk.type = 'checkbox';
-      chk.checked = esAparte(mod);
-      chk.addEventListener('change', function(){
-        mod.aparte = chk.checked;
-        pintarEditor(); repintar();
-      });
-      sw.appendChild(chk);
-      sw.appendChild(document.createTextNode(
-        'Mostrarlo abajo, en Recursos (descargas), en vez de en la lista de módulos'));
-      cu.appendChild(sw);
-
-      /* Cambiar portada */
-      const lp = document.createElement('label');
-      lp.className = 'campo';
-      lp.innerHTML = '<span>Portada (se reduce a 640 px automáticamente)</span>';
-      const fi = document.createElement('input');
-      fi.type = 'file';
-      fi.accept = 'image/*';
-      fi.addEventListener('change', function(){
-        const file = fi.files && fi.files[0];
-        if (!file) return;
-        const lector = new FileReader();
-        lector.onload = function(e){
-          const img = new Image();
-          img.onload = function(){
-            const c = document.createElement('canvas');
-            c.width = 640; c.height = 640;
-            const g = c.getContext('2d');
-            const lado = Math.min(img.width, img.height);
-            g.drawImage(img, (img.width - lado) / 2, (img.height - lado) / 2,
-                        lado, lado, 0, 0, 640, 640);
-            mod.portada = c.toDataURL('image/jpeg', 0.82);
-            mini.src = mod.portada;
-            repintar();
-          };
-          img.src = e.target.result;
-        };
-        lector.readAsDataURL(file);
-      });
-      lp.appendChild(fi);
-      cu.appendChild(lp);
-
-      /* Clases */
-      mod.clases.forEach(function(c, k){
-        const fila = document.createElement('div');
-        fila.className = 'fila';
-
-        const fc = document.createElement('div');
-        fc.className = 'fila-cab';
-        fc.innerHTML = '<span>' + (esAparte(mod) ? 'Archivo ' : 'Clase ') +
-                       String(k + 1).padStart(2, '0') + '</span>';
-        const del = document.createElement('button');
-        del.className = 'boton leve';
-        del.type = 'button';
-        del.textContent = 'Quitar';
-        del.addEventListener('click', function(){
-          mod.clases.splice(k, 1);
-          pintarEditor(); repintar();
-        });
-        fc.appendChild(del);
-        fila.appendChild(fc);
-
-        fila.appendChild(campo('Título', c.titulo, function(v){ c.titulo = v; repintar(); }));
-        fila.appendChild(campo(esAparte(mod) ? 'Enlace de descarga' : 'Enlace de Drive',
-                               c.enlace, function(v){ c.enlace = v; repintar(); }));
-
-        const duo = document.createElement('div');
-        duo.className = 'duo';
-        duo.appendChild(campo('Duración', c.duracion, function(v){ c.duracion = v; repintar(); }));
-        duo.appendChild(campo('Fecha', c.fecha, function(v){ c.fecha = v; repintar(); }));
-        fila.appendChild(duo);
-
-        /* Recuadro dorado para las piezas estrella */
-        const dest = document.createElement('label');
-        dest.className = 'interruptor';
-        const cd = document.createElement('input');
-        cd.type = 'checkbox';
-        cd.checked = !!c.destacada;
-        cd.addEventListener('change', function(){
-          c.destacada = cd.checked;
-          repintar();
-        });
-        dest.appendChild(cd);
-        dest.appendChild(document.createTextNode('Destacar con recuadro dorado'));
-        fila.appendChild(dest);
-
-        cu.appendChild(fila);
-      });
-
-      const addClase = document.createElement('button');
-      addClase.className = 'boton';
-      addClase.type = 'button';
-      addClase.textContent = esAparte(mod) ? 'Añadir archivo' : 'Añadir clase';
-      addClase.addEventListener('click', function(){
-        mod.clases.push({
-          titulo: esAparte(mod) ? 'Archivo nuevo' : 'Clase nueva',
-          duracion:'', fecha:'', enlace:''
-        });
-        activo = i;
-        pintarEditor(); repintar();
-      });
-      cu.appendChild(addClase);
-
-      bloque.appendChild(cu);
-      cuerpo.appendChild(bloque);
+      tira.appendChild(t);
     });
+    cuerpo.appendChild(tira);
+
+    const mod = CURSO.modulos[modSel];
+    if (!mod){ pintarPublicacion(); return; }
+    const aparte = esAparte(mod);
+
+    /* ── Cabecera del módulo elegido ── */
+    const cab = document.createElement('div');
+    cab.className = 'mod-cab';
+    const h = document.createElement('h3');
+    h.textContent = mod.nombre;
+    cab.appendChild(h);
+
+    const acciones = document.createElement('div');
+    acciones.className = 'mod-acciones';
+    acciones.appendChild(botonLeve('← Mover', 'Mover el módulo a la izquierda', function(){
+      if (!mover(CURSO.modulos, modSel, -1)) return;
+      modSel--; activo = modSel; refrescarEditor(); repintar();
+    }));
+    acciones.appendChild(botonLeve('Mover →', 'Mover el módulo a la derecha', function(){
+      if (!mover(CURSO.modulos, modSel, 1)) return;
+      modSel++; activo = modSel; refrescarEditor(); repintar();
+    }));
+    const add = document.createElement('button');
+    add.className = 'descargar';
+    add.type = 'button';
+    add.textContent = aparte ? '+ Añadir archivo' : '+ Añadir clase';
+    add.addEventListener('click', function(){ nuevaClase(mod); });
+    acciones.appendChild(add);
+    cab.appendChild(acciones);
+    cuerpo.appendChild(cab);
+
+    /* ── Tabla de enlaces ── */
+    const tabla = document.createElement('div');
+    tabla.className = 'tabla-ed';
+    tabla.innerHTML =
+      '<div class="fila-ed cabecera">' +
+        '<span>Nº</span><span>Título</span>' +
+        '<span>' + (aparte ? 'Enlace de descarga' : 'Enlace de Drive') + '</span>' +
+        '<span>Duración</span><span>Fecha</span><span title="Destacar con recuadro dorado">★</span><span title="Veces que los alumnos han abierto el enlace">Vistas</span><span></span>' +
+      '</div>';
+
+    if (!mod.clases.length){
+      const v = document.createElement('div');
+      v.className = 'vacio-ed';
+      v.textContent = 'Este módulo no tiene nada todavía. Pulsa "Añadir".';
+      tabla.appendChild(v);
+    }
+
+    mod.clases.forEach(function(c, k){
+      const f = document.createElement('div');
+      f.className = 'fila-ed' + (c.destacada ? ' dorada' : '') + (!c.enlace ? ' falta' : '');
+
+      const n = document.createElement('span');
+      n.className = 'num';
+      n.textContent = String(k + 1).padStart(2, '0');
+      f.appendChild(n);
+
+      f.appendChild(entrada(c.titulo, 'Título', function(v){ c.titulo = v; repintar(); }, 'c-tit'));
+      f.appendChild(entrada(c.enlace, 'Pega aquí el enlace', function(v){
+        c.enlace = v; f.classList.toggle('falta', !v); leerVistas(v, vb); repintar();
+      }, 'c-enl'));
+      f.appendChild(entrada(c.duracion, 'Duración', function(v){ c.duracion = v; repintar(); }, 'c-dur'));
+      f.appendChild(entrada(c.fecha, 'Fecha', function(v){ c.fecha = v; repintar(); }, 'c-fec'));
+
+      const cd = document.createElement('input');
+      cd.type = 'checkbox';
+      cd.className = 'c-est';
+      cd.title = 'Destacar con recuadro dorado';
+      cd.checked = !!c.destacada;
+      cd.addEventListener('change', function(){
+        c.destacada = cd.checked; f.classList.toggle('dorada', cd.checked); repintar();
+      });
+      f.appendChild(cd);
+
+      const vb = document.createElement('span');
+      vb.className = 'vistas-ed';
+      vb.title = 'Veces que los alumnos han abierto este enlace';
+      leerVistas(c.enlace, vb);
+      f.appendChild(vb);
+
+      const ops = document.createElement('span');
+      ops.className = 'ops';
+      ops.appendChild(botonLeve('↑', 'Subir', function(){
+        if (mover(mod.clases, k, -1)){ refrescarEditor(); repintar(); }
+      }));
+      ops.appendChild(botonLeve('↓', 'Bajar', function(){
+        if (mover(mod.clases, k, 1)){ refrescarEditor(); repintar(); }
+      }));
+      ops.appendChild(botonLeve('×', 'Quitar', function(){
+        if (!confirm('¿Quitar "' + (c.titulo || 'sin título') + '"?')) return;
+        mod.clases.splice(k, 1);
+        refrescarEditor(); repintar();
+      }, 'quitar'));
+      f.appendChild(ops);
+
+      tabla.appendChild(f);
+    });
+    cuerpo.appendChild(tabla);
+
+    if (mod.clases.length > 6){
+      const add2 = document.createElement('button');
+      add2.className = 'boton add-abajo';
+      add2.type = 'button';
+      add2.textContent = aparte ? '+ Añadir archivo' : '+ Añadir clase';
+      add2.addEventListener('click', function(){ nuevaClase(mod); });
+      cuerpo.appendChild(add2);
+    }
+
+    /* ── Datos del módulo, plegados ── */
+    const aj = document.createElement('details');
+    aj.className = 'plegable';
+    aj.innerHTML = '<summary>Nombre, descripción y portada de "' + limpiar(mod.nombre) + '"</summary>';
+    const ajc = document.createElement('div');
+    ajc.className = 'plegable-cuerpo';
+
+    ajc.appendChild(campo('Nombre del módulo', mod.nombre, function(v){
+      mod.nombre = v; h.textContent = v;
+      const tn = tira.children[modSel] && tira.children[modSel].querySelector('.t-nom');
+      if (tn) tn.textContent = v;
+      repintar();
+    }));
+    ajc.appendChild(campo('Descripción', mod.resumen, function(v){ mod.resumen = v; repintar(); }));
+
+    const sw = document.createElement('label');
+    sw.className = 'interruptor';
+    const chk = document.createElement('input');
+    chk.type = 'checkbox';
+    chk.checked = aparte;
+    chk.addEventListener('change', function(){
+      mod.aparte = chk.checked; refrescarEditor(); repintar();
+    });
+    sw.appendChild(chk);
+    sw.appendChild(document.createTextNode(
+      'Mostrarlo abajo, en Recursos (descargas), en vez de en la lista de módulos'));
+    ajc.appendChild(sw);
+
+    const lp = document.createElement('label');
+    lp.className = 'campo';
+    lp.style.marginTop = '14px';
+    lp.innerHTML = '<span>Portada (se reduce a 640 px automáticamente)</span>';
+    const fi = document.createElement('input');
+    fi.type = 'file';
+    fi.accept = 'image/*';
+    fi.addEventListener('change', function(){
+      const file = fi.files && fi.files[0];
+      if (!file) return;
+      const lector = new FileReader();
+      lector.onload = function(e){
+        const img = new Image();
+        img.onload = function(){
+          const cv = document.createElement('canvas');
+          cv.width = 640; cv.height = 640;
+          const g = cv.getContext('2d');
+          const lado = Math.min(img.width, img.height);
+          g.drawImage(img, (img.width - lado) / 2, (img.height - lado) / 2,
+                      lado, lado, 0, 0, 640, 640);
+          mod.portada = cv.toDataURL('image/jpeg', 0.82);
+          refrescarEditor(); repintar();
+        };
+        img.src = e.target.result;
+      };
+      lector.readAsDataURL(file);
+    });
+    lp.appendChild(fi);
+    ajc.appendChild(lp);
+
+    const borrarMod = document.createElement('button');
+    borrarMod.className = 'boton peligro';
+    borrarMod.type = 'button';
+    borrarMod.textContent = 'Borrar este módulo entero';
+    borrarMod.addEventListener('click', function(){
+      if (!confirm('¿Borrar el módulo "' + mod.nombre + '" y todas sus clases?')) return;
+      CURSO.modulos.splice(modSel, 1);
+      activo = 0; modSel = 0;
+      refrescarEditor(); repintar();
+    });
+    ajc.appendChild(borrarMod);
+    aj.appendChild(ajc);
+    cuerpo.appendChild(aj);
 
     pintarPublicacion();
   }
+
+  function nuevaClase(mod){
+    mod.clases.push({
+      titulo: esAparte(mod) ? 'Archivo nuevo' : 'Clase nueva',
+      duracion:'', fecha:'', enlace:''
+    });
+    refrescarEditor(); repintar();
+    const filas = cuerpo.querySelectorAll('.tabla-ed .fila-ed:not(.cabecera)');
+    const ult = filas[filas.length - 1];
+    if (ult){
+      ult.scrollIntoView({ block:'center', behavior:'smooth' });
+      const inp = ult.querySelector('.c-tit');
+      setTimeout(function(){ inp.focus(); inp.select(); }, 80);
+    }
+  }
+
+  function marcarSucio(v){
+    sucio = v;
+    const p = document.getElementById('publicar');
+    if (p){
+      p.classList.toggle('pendiente', sucio);
+      p.textContent = sucio ? 'Publicar cambios ●' : 'Publicar en la web';
+    }
+  }
+
+  window.addEventListener('beforeunload', function(e){
+    if (sucio){ e.preventDefault(); e.returnValue = ''; }
+  });
+
+  /* Clics de los alumnos: se cuentan al salir hacia el enlace */
+  zona.addEventListener('click', function(e){
+    const a = e.target.closest && e.target.closest('a.clase');
+    if (a) sumarVista(a.getAttribute('href'));
+  });
+  zona.addEventListener('auxclick', function(e){
+    const a = e.target.closest && e.target.closest('a.clase');
+    if (a && e.button === 1) sumarVista(a.getAttribute('href'));
+  });
 
   /* ── Descarga del archivo actualizado ────────────────── */
 
@@ -2218,7 +2495,7 @@ button{ font:inherit; color:inherit; background:none; border:none; cursor:pointe
   /* ── Conexiones ──────────────────────────────────────── */
 
   const boton = document.getElementById('engranaje');
-  let autorizado = false;
+  let autorizado = esDueno();   /* este navegador ya entró una vez: no vuelve a pedir clave */
 
   /* El engranaje no existe para el alumno: solo se muestra si la URL
      termina en #editar. Y aun así pide la clave. */
@@ -2257,6 +2534,7 @@ button{ font:inherit; color:inherit; background:none; border:none; cursor:pointe
     function probar(){
       if (inp.value === CLAVE){
         autorizado = true;
+        try { localStorage.setItem('mdm_editor_ok', CLAVE); } catch(e){}
         pie.style.display = '';
         pintarEditor();
       } else {
@@ -2277,6 +2555,7 @@ button{ font:inherit; color:inherit; background:none; border:none; cursor:pointe
 
   boton.addEventListener('click', function(){
     velo.classList.add('visible');
+    modSel = activo;
     if (autorizado){ pie.style.display = ''; pintarEditor(); }
     else pedirClave();
   });
@@ -2338,8 +2617,12 @@ button{ font:inherit; color:inherit; background:none; border:none; cursor:pointe
 
   function pintarPublicacion(){
     const a = leerAjustes();
+    const plg = document.createElement('details');
+    plg.className = 'plegable';
+    if (!a.repo || !a.token) plg.open = true;
+    plg.innerHTML = '<summary>Ajustes de publicación (GitHub)</summary>';
     const caja = document.createElement('div');
-    caja.className = 'publicar';
+    caja.className = 'publicar plegable-cuerpo';
     caja.innerHTML =
       '<h3>Publicar en la web</h3>' +
       '<p class="expl">Rellena esto una sola vez. Queda guardado en este navegador ' +
@@ -2374,9 +2657,11 @@ button{ font:inherit; color:inherit; background:none; border:none; cursor:pointe
     const estado = document.createElement('div');
     estado.className = 'estado';
     estado.id = 'estado-pub';
-    caja.appendChild(estado);
 
-    cuerpo.appendChild(caja);
+    plg.appendChild(caja);
+    cuerpo.appendChild(plg);
+    /* El aviso queda fuera del plegable para verlo siempre al publicar */
+    cuerpo.appendChild(estado);
   }
 
   function avisar(texto, clase){
@@ -2427,6 +2712,8 @@ button{ font:inherit; color:inherit; background:none; border:none; cursor:pointe
     };
 
     avisar('Publicando...');
+    const ep = document.getElementById('estado-pub');
+    if (ep) ep.scrollIntoView({ block:'nearest', behavior:'smooth' });
 
     /* Consulta la versión actual del archivo. cache:'no-store' es
        imprescindible: sin él el navegador reutiliza una respuesta vieja
@@ -2488,6 +2775,7 @@ button{ font:inherit; color:inherit; background:none; border:none; cursor:pointe
       }
 
       if (r.ok){
+        marcarSucio(false);
         avisar('Publicado correctamente. Railway tarda un par de minutos en ' +
                'redesplegar. Recarga la web pasado ese rato.', 'bien');
       } else {
