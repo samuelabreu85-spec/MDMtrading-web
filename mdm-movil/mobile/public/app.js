@@ -416,7 +416,10 @@
       '<div class="set" style="border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:8px;background:var(--card)"><div><b>Escudo</b><small>' +
       (s.locked ? 'Cuenta bloqueada: no se puede quitar.' : s.protected ? (canOff ? 'Protegida. Puedes quitarlo mientras la ventana de escudos esté abierta.' : 'Protegida. La ventana para quitarlo ya se ha cerrado hoy.') : 'Sin protección. Actívalo para aplicar tus reglas.') +
       '</small></div><label class="sw"><input type="checkbox" id="swShield"' + (s.protected ? ' checked' : '') + ((s.protected && !canOff) ? ' disabled' : '') + '><span></span></label></div>' +
-      '<button class="opt gold" data-a="lock"' + (!s.protected || s.locked ? ' disabled' : '') + '>' + ICON.lock + '<div><b>Bloquear ahora</b><small>' + (s.protected ? 'Bloqueo manual de 1 a 24 h.' : 'Activa antes el escudo.') + '</small></div></button>' +
+      (!s.locked
+        ? '<button class="opt gold" data-a="daylock">' + ICON.lock + '<div><b>Bloquear por hoy</b><small>No abrirá más operaciones hasta las 00:00 (hora de Madrid), ni el bot ni a mano.</small></div></button>'
+        : '<button class="opt gold" data-a="unlock"' + (s.dayLock ? '' : ' disabled') + '>' + ICON.lock + '<div><b>Desbloquear</b><small>' +
+          (s.dayLock ? 'Bloqueada por hoy desde el móvil. Vuelve a dejarla operar.' : 'La han bloqueado los escudos: no se puede quitar desde el móvil.') + '</small></div></button>') +
       '<button class="opt" data-a="cancel"' + (!x.orders ? ' disabled' : '') + '>' + ICON.x + '<div><b>Cancelar órdenes</b><small>' + (x.orders ? x.orders + ' órdenes vivas (SL y TP incluidos).' : 'No hay órdenes vivas.') + '</small></div></button>' +
       '<button class="opt danger" data-a="flatten"' + (!(hasPos || x.orders) ? ' disabled' : '') + '>' + ICON.stop + '<div><b>Aplanar cuenta</b><small>' + (hasPos ? 'Cierra a mercado todas las posiciones.' : 'No hay posiciones abiertas.') + '</small></div></button>' +
       '<h2 style="margin:18px 0 8px">Operaciones de hoy</h2><div id="accTrades"><div class="mut" style="padding:10px 0;font-size:13px">Cargando…</div></div>',
@@ -436,23 +439,16 @@
           if (k === 'flatten') { close(); confirmSheet('Aplanar cuenta', 'Se cerrarán <b>A MERCADO</b> todas las posiciones de <b>' + esc(name) + '</b> y se cancelarán sus órdenes.' +
             (hasPos ? '<br><br>' + x.positions.map(p => (p.side === 'Long' ? 'Compra ' : 'Venta ') + p.qty + ' ' + esc(p.root)).join(', ') : ''), 'Sí, aplanar', true,
             async () => Object.assign(await cmd('flatten', { account: name }), { okMsg: 'Orden de aplanar enviada: ' + name })); }
-          if (k === 'lock') { close(); lockSheet(name); }
+          if (k === 'daylock') { close(); confirmSheet('Bloquear ' + name + ' por hoy',
+            '<b>Tranquilo.</b> Pulsando este botón lo único que va a pasar es que esta cuenta por hoy ya no va a operar más.' +
+            (hasPos ? '<br><br>La posición abierta <b>no se cierra</b>: sigue con su SL y su TP.' : '') +
+            '<br><br><span class="mut">Mañana a las 00:00 (hora de Madrid) se desbloquea sola.</span>', 'Sí, bloquear', false,
+            async () => Object.assign(await cmd('dayLock', { account: name }), { okMsg: name + ' bloqueada por hoy' })); }
+          if (k === 'unlock') { close(); confirmSheet('Desbloquear ' + name,
+            'La cuenta vuelve a poder operar hoy: <b>el bot podrá entrar de nuevo</b> si tiene setup.<br><br>¿Seguro que quieres desbloquearla?', 'Sí, desbloquear', true,
+            async () => Object.assign(await cmd('phoneUnlock', { account: name }), { okMsg: name + ' desbloqueada' })); }
         });
       });
-  }
-
-  function lockSheet(name) {
-    let h = 1;
-    sheet('<h3>Bloquear ' + esc(name) + '</h3><p>Se cierra lo que tenga abierto y no podrá operar hasta que pase el tiempo. No se puede deshacer desde el móvil.</p>' +
-      '<div class="hrs">' + [1, 2, 4, 8, 24].map(n => '<button class="btn' + (n === 1 ? ' on' : '') + '" data-h="' + n + '">' + n + ' h</button>').join('') + '</div>' +
-      '<div class="row2"><button class="btn" data-x="no">Cancelar</button><button class="btn red" data-x="si">Bloquear 1 h</button></div>',
-      (b, close) => b.addEventListener('click', async e => {
-        const hb = e.target.closest('[data-h]');
-        if (hb) { h = +hb.dataset.h; b.querySelectorAll('[data-h]').forEach(x => x.classList.toggle('on', x === hb)); b.querySelector('[data-x=si]').textContent = 'Bloquear ' + h + ' h'; return; }
-        const x = e.target.getAttribute('data-x');
-        if (x === 'no') close();
-        if (x === 'si') { e.target.disabled = true; const r = await cmd('manualLock', { account: name, hours: h }); close(); toast(r.ok ? name + ' bloqueada ' + h + ' h' : r.msg, r.ok ? 'ok' : 'err'); }
-      }));
   }
 
   function copyView() {
