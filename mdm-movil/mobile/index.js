@@ -27,7 +27,7 @@ try { webpush = require('web-push'); } catch (e) { webpush = null; }
 const CH_RE = /^[A-Za-z0-9_-]{16,64}$/;
 const MAX_MSG = 512 * 1024;
 const MAX_PHONES = 5;
-const PHONE_CMDS = new Set(['flatten', 'cancelOrders', 'shield', 'manualLock', 'copyOn', 'copyMaster', 'copyFollower', 'pnlMonth']);
+const PHONE_CMDS = new Set(['flatten', 'cancelOrders', 'shield', 'manualLock', 'dayLock', 'phoneUnlock', 'copyOn', 'copyMaster', 'copyFollower', 'pnlMonth']);
 const PUSH_KINDS = {
   lock: 'Cuenta bloqueada', unlock: 'Cuenta desbloqueada', closeFail: 'Revisa la posición',
   blind: 'Escudo sin datos', blocked: 'Orden cancelada', copyWarn: 'Copiador',
